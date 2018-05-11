@@ -1,0 +1,9 @@
+##fileformat=VCFv4.1
+##fileDate=20171122
+##source=ensembl;version=91;url=http://e91.ensembl.org/Homo_sapiens
+##reference=ftp://ftp.ensembl.org/pub/release-91/fasta/Homo_sapiens/dna/
+##INFO=<ID=COSMIC_82,Number=0,Type=Flag,Description="Somatic mutations found in human cancers from the COSMIC catalogue">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+Ref	7	1	G	T	.	.	dbSNP_150;TSA=SNV;E_Cited;E_Phenotype_or_Disease;CLIN_pathogenic;AA=C
+Ref	9	1	G	T	.	.	dbSNP_150;TSA=SNV;E_Cited;E_Phenotype_or_Disease;CLIN_pathogenic;AA=C
+Ref	11	2	G	T	.	.	dbSNP_150;TSA=SNV;E_Cited;E_Phenotype_or_Disease;CLIN_pathogenic;AA=C
