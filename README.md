@@ -49,7 +49,7 @@ make
 ## Usage
 
 ```
-./malva [-k ksize] <reference> <variants>
+./malva [-k ksize] [-m min_coverage] [-x max_coverage] <reference> <variants> <kmc_output_prefix>
 ```
 
 ## Authors
