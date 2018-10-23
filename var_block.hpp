@@ -13,25 +13,15 @@ template <typename T> void extend(T &V1, const T &V2) {
   V1.insert(V1.end(), V2.begin(), V2.end());
 }
 
-// /**
-//  * Print the content of a container of basic elements.
-//  **/
-// template <typename T> void print(std::vector<T> A, std::string s) {
-//   std::cout << "-- " << s << " ";
-//   for(const auto &a : A) {
-//     std::cout << a << " ";
-//   }
-//   std::cout << std::endl;
-// }
-
 class VB {
 private: // attributes
   std::vector<Variant> variants;
   const char *reference;
   int k;
+  int number_variants_out = 0;
 
 public:
-  VB(const char *_reference, int _k) {
+  VB(const char *_reference, const int &_k) {
     reference = _reference;
     k = _k;
   }
@@ -132,7 +122,24 @@ public:
     }
     return kmers;
   }
-  
+
+  // TODO: print in VCF
+  void output_variants(std::map<int, std::set<int>> well_covered_variants) {
+    for (const auto &elem : well_covered_variants) {
+      int var_idx = elem.first;
+      std::cout << variants[var_idx].seq_name << '\t' << variants[var_idx].ref_pos + 1 << '\t'
+                << number_variants_out++ << '\t' << variants[var_idx].ref_sub << '\t';
+      uint varc = 0;
+      for (const int &alt_id : elem.second) {
+        cout << variants[var_idx].alts[alt_id-1]; //-1 since the alt_id starts from 1 (it is 0 for the reference)
+        ++varc;
+        if(varc != elem.second.size())
+          cout << ',';
+      }
+      cout << "\t100\tPASS\tVT=SNP\n";
+    }
+  }
+
 private: // methods
   const VB &operator=(const VB &other) { return *this; }
   const VB &operator=(const VB &&other) { return *this; }
