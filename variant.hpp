@@ -3,15 +3,16 @@
 
 struct Variant {
   std::string seq_name;
-  int ref_pos;                   // Variant position 0-based
-  std::string ref_sub;           // Reference base{s}
-  int ref_size;                  // Len of reference base{s}
-  std::vector<std::string> alts; // List of alternatives
-  int min_size;                  // Length of the shortest string (ref and alts)
-  int max_size;                  // Length of the longest string (ref and alts)
-  bool is_good = true;           // false if no alternatives, i.e. only <CN>
-  std::vector<std::pair<int,int>> genotypes;
-  std::vector<bool> phasing;
+  int ref_pos;                               // Variant position 0-based
+  std::string ref_sub;                       // Reference base{s}
+  int ref_size;                              // Len of reference base{s}
+  std::vector<std::string> alts;             // List of alternatives
+  int min_size;                              // Length of the shortest string (ref and alts)
+  int max_size;                              // Length of the longest string (ref and alts)
+  bool is_good = true;                       // false if no alternatives, i.e. only <CN>
+  std::vector<std::pair<int,int>> genotypes; // full list of genotypes
+  std::vector<bool> phasing;                 // true if genotype i-th is phased, false otherwise
+  std::vector<int> positive_samples;         // indices of samples for which genotype is different from 00
 
   Variant() {}
 
@@ -69,6 +70,8 @@ struct Variant {
       // Here, I'm assuming ploidy = 2. Otherwise, loop til ploidy
       genotypes.push_back(std::make_pair(bcf_gt_allele(curr_gt[0]),
                                          bcf_gt_allele(curr_gt[1])));
+      if(bcf_gt_allele(curr_gt[0]) > 0 or bcf_gt_allele(curr_gt[1]) > 0)
+        positive_samples.push_back(i);
       if(bcf_gt_is_phased(curr_gt[1]))
         // this works, but I'm not 100% sure it's sufficient
         phasing.push_back(true);

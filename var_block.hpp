@@ -30,7 +30,7 @@ public:
   bool is_near_to_last(const Variant &v) {
     return variants.back().is_near_to(v, k);
   }
-  
+
   void add_variant(const Variant &v) {
     variants.push_back(v);
   }
@@ -53,7 +53,7 @@ public:
 
       std::vector<std::vector<int>> right_combs = get_combs_on_the_right(v_index);
       std::vector<std::vector<int>> left_combs = get_combs_on_the_left(v_index);
-    
+
       std::vector<std::vector<int>> combs = combine_combs(left_combs, right_combs, v_index);
 
       for(const std::vector<int> &comb : combs) {
@@ -176,7 +176,7 @@ private: // methods
             int sum = right_sums[c];
 
             Variant last_v_in_comb = variants[comb.back()];
-            
+
             if(!last_v_in_comb.overlaps_with(curr_v)) {
               added_flag = true;
               if(mid_v.is_near_to(curr_v, k, sum)) {
@@ -195,7 +195,7 @@ private: // methods
               int new_sum = right_sums[c];
 
               Variant last_v_in_comb = variants[new_comb.back()];
-            
+
               while(last_v_in_comb.overlaps_with(curr_v) and !new_comb.empty()) {
                 new_comb.pop_back();
                 new_sum -= last_v_in_comb.ref_size - last_v_in_comb.min_size;
@@ -257,7 +257,7 @@ private: // methods
             int sum = left_sums[c];
 
             Variant last_v_in_comb = variants[comb.back()];
-            
+
             if(!curr_v.overlaps_with(last_v_in_comb)) {
               added_flag = true;
               if(curr_v.is_near_to(mid_v, k, sum)) {
@@ -347,7 +347,7 @@ private: // methods
    **/
   std::vector<std::string> get_ref_subs(const std::vector<int> &comb) {
     std::vector<std::string> ref_subs;
-  
+
     int last_end = -1;
     for(const int &index : comb) {
       Variant v = variants[index];
@@ -372,8 +372,8 @@ private: // methods
     // A set to avoid duplicate elements
     std::set<std::vector<std::string>> aacs;
     Variant central_v = variants[central_index];
-    // For each individuals
-    for(uint gt_i=0; gt_i<central_v.genotypes.size(); ++gt_i) {
+    // For each individual having this variant
+    for(const int &gt_i : central_v.positive_samples) {
       std::vector<std::string> aac;
       // If GT is not 0|0, then build the vector of alleles
       if(central_v.genotypes[gt_i].first != 0) {
