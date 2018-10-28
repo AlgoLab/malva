@@ -1,0 +1,21 @@
+resources:
+  folds:
+    root: /data/malva_exps
+    tools : /home/prj_vcfgeno/software
+    refs : refs
+    vcfs : vcfs
+    samples : samples
+    kmc : KMC
+    res : results
+    malva_out : malva
+  malva: malva
+  chroms:
+    # - chr1
+    # - chr14
+    - chr22
+  samples:
+    - original
+    - corrected
+  vcf_types:
+    - full
+    - EUR

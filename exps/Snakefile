@@ -1,0 +1,126 @@
+configfile: "config.yaml"
+
+import os
+
+### Folders
+resources = config["resources"]
+folds = resources["folds"]
+root_fold = folds["root"]
+
+# Input
+refs_foldname = folds["refs"] 
+refs_fold = os.path.join(root_fold, refs_foldname)
+vcfs_foldname = folds["vcfs"] 
+vcfs_fold = os.path.join(root_fold, vcfs_foldname)
+samples_foldname = folds["samples"] 
+samples_fold = os.path.join(root_fold, samples_foldname)
+
+# Output
+res_foldname = folds["res"]
+res_fold = os.path.join(root_fold, res_foldname)
+kmc_foldname = folds["kmc"]
+malva_outfold = folds["malva_out"]
+
+# Tools
+tools_fold = os.path.join(root_fold, folds["tools"])
+malva_fold = os.path.join(tools_fold, resources["malva"])
+
+
+### Data
+# Chromosomes
+chroms = []
+for chrom in resources["chroms"]:
+    chroms.append(chrom)
+
+# Types of VCF
+vcf_types = []
+for vcft in resources["vcf_types"]:
+    vcf_types.append(vcft)
+
+# Samples
+samples = []
+for sample in resources["samples"]:
+    samples.append(sample)
+
+# Small k
+ks = [23, 27, 31, 35, 39, 41]
+
+# Big K
+Ks = [43, 47, 53, 57, 63]
+
+
+### Rules
+rule run_malva:
+    input:
+        expand(os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.K{K}.{sample}.{vcf_type}.vcf"),
+               chrom = chroms,
+               sample = samples,
+               k = ks,
+               K = Ks,
+               vcf_type = vcf_types)
+
+rule run_malva_nofilter:
+    input:
+        expand(os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.no_filter.{sample}.{vcf_type}.vcf"),
+               chrom = chroms,
+               sample = samples,
+               k = ks,
+               vcf_type = vcf_types)
+        
+rule kmc:
+    input:
+        sample = os.path.join(samples_fold, "{chrom}.{sample}.fq.gz")
+    output:
+        suf = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{k}.{sample}.kmc_suf")
+    params:
+        out_prefix = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{k}.{sample}"),
+        tmp_fold = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{k}_{sample}_tmp"),
+        k = "{k}"
+    log:
+        time = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{k}.{sample}.time"),
+        out = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{k}.{sample}.log")
+    shell:
+        """
+        mkdir -p {params.tmp_fold}
+        /usr/bin/time -v -o {log.time} {malva_fold}/KMC/bin/kmc -m3 -k{params.k} -t1 {input.sample} {params.out_prefix} {params.tmp_fold} &> {log.out}
+        rm -r {params.tmp_fold}
+        """
+
+rule malva:
+    input:
+        ref = os.path.join(refs_fold, "{chrom}.fa"),
+        vcf = os.path.join(vcfs_fold, "{chrom}.{vcf_type}.vcf.gz"),
+        suf = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{K}.{sample}.kmc_suf")
+    output:
+        os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.K{K}.{sample}.{vcf_type}.vcf")
+    params:
+        kmc_prefix = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{K}.{sample}"),
+        k = "{k}",
+        K = "{K}"
+    log:
+        time = os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.K{K}.{sample}.{vcf_type}.time"),
+        out = os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.K{K}.{sample}.{vcf_type}.log")
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {malva_fold}/malva -k {params.k} -r {params.K} -c 1 {input.ref} {input.vcf} {params.kmc_prefix} > {output} 2> {log.out}
+        """
+
+rule malva_no_filter:
+    input:
+        ref = os.path.join(refs_fold, "{chrom}.fa"),
+        vcf = os.path.join(vcfs_fold, "{chrom}.{vcf_type}.vcf.gz"),
+        suf = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{k}.{sample}.kmc_suf")
+    output:
+        os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.no_filter.{sample}.{vcf_type}.vcf")
+    params:
+        kmc_prefix = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{k}.{sample}"),
+        k = "{k}"
+    log:
+        time = os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.no_filter.{sample}.{vcf_type}.time"),
+        out = os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.no_filter.{sample}.{vcf_type}.log")
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {malva_fold}/malva -l -k {params.k} -r {params.k} -c 1 {input.ref} {input.vcf} {params.kmc_prefix} > {output} 2> {log.out}
+        """
+
+# python3 compare_vcfs.py ~/data/exps/chr22/NA12878.truth.vcf ~/data/exps/chr22/malva_out/w_ref_filter/chr22.EUR.k31.K47.c1.corrected.vcf
