@@ -9,7 +9,9 @@ static const char *USAGE_MESSAGE =
   "Usage: malva [-k KMER-SIZE] <reference.fa> <variants.vcf>";
 
 namespace opt {
+  static bool strict_mode = true;
   static uint k = 31;
+  static uint ref_k = 43;
   static uint bf_size = ((uint)0b1 << 31);
   static uint min_coverage = 30;
   static uint max_coverage = 251;
@@ -19,13 +21,15 @@ namespace opt {
   static string kmc_sample_path;
 }
 
-static const char *shortopts = "k:r:u:c:x:b:t:lh";
+static const char *shortopts = "lk:r:b:c:x:h";
 
 static const struct option longopts[] = {
+  {"loose", no_argument, NULL, 'l'},
   {"kmer-size", required_argument, NULL, 'k'},
+  {"ref-kmer", required_argument, NULL, 'r'},
+  {"bf-size", required_argument, NULL, 'b'},
   {"min-coverage", required_argument, NULL, 'c'},
   {"max-coverage", required_argument, NULL, 'x'},
-  // {"bf-size", required_argument, NULL, 'b'},
   // {"threads", no_argument, NULL, 't'},
   {"help", no_argument, NULL, 'h'},
   {NULL, 0, NULL, 0}};
@@ -36,6 +40,15 @@ void parse_arguments(int argc, char **argv) {
        (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) {
     std::istringstream arg(optarg != NULL ? optarg : "");
     switch (c) {
+    case 'l':
+      opt::strict_mode = false;
+      break;
+    case 'k':
+      arg >> opt::k;
+      break;
+    case 'r':
+      arg >> opt::ref_k;
+      break;
     case 'b':
       // Let's consider this as MB
       arg >> opt::bf_size;
@@ -46,9 +59,6 @@ void parse_arguments(int argc, char **argv) {
       break;
     case 'x':
       arg >> opt::max_coverage;
-      break;
-    case 'k':
-      arg >> opt::k;
       break;
       // case 't':
       //   arg >> opt::nThreads;

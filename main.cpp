@@ -169,6 +169,17 @@ int main(int argc, char *argv[]) {
 
   bf.switch_mode();
 
+  BF ref_bf(opt::bf_size);
+  if (opt::strict_mode) {
+    for (size_t p = (opt::ref_k - opt::k) / 2; p < reference->seq.l - opt::ref_k; ++p) {
+      std::string ref_ksub(reference->seq.s + p, opt::k);
+      if (bf.test_key(ref_ksub)) {
+	std::string context(reference->seq.s + p - ((opt::ref_k - opt::k) / 2), opt::ref_k);
+        ref_bf.add_key(context);
+      }
+    }
+  }
+
   pelapsed("BF creation complete (" + std::to_string(tot_vcf_kmers) + ")");
 
   // STEP 2: test variants present in read sample
@@ -181,12 +192,26 @@ int main(int argc, char *argv[]) {
   }
   kmer_db.Info(klen, mode, min_counter, pref_len, sign_len, min_c, max_c, tot_kmers);
   CKmerAPI kmer_obj(klen);
+
+  std::string context;
+  while(kmer_db.ReadNextKmer(kmer_obj, counter)) {
+    kmer_obj.to_string(context);
+    if(!ref_bf.test_key(context)) {
+      std::string kmer(context.c_str() + ((opt::ref_k - opt::k) / 2), opt::k);
+      if (bf.test_key(kmer))
+	bf.increment(kmer, counter);
+    }
+  }
+
+  /**
+  // OLD - without context
   std::string kmer;
   while(kmer_db.ReadNextKmer(kmer_obj, counter)) {
     kmer_obj.to_string(kmer);
     if (bf.test_key(kmer))
       bf.increment(kmer, counter);
   }
+  **/
 
   pelapsed("BF weights created");
 
