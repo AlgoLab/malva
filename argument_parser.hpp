@@ -10,6 +10,7 @@ static const char *USAGE_MESSAGE =
 
 namespace opt {
   static bool strict_mode = true;
+  static bool all_variants = false;
   static uint k = 31;
   static uint ref_k = 43;
   static uint bf_size = ((uint)0b1 << 31);
@@ -21,10 +22,11 @@ namespace opt {
   static string kmc_sample_path;
 }
 
-static const char *shortopts = "lk:r:b:c:x:h";
+static const char *shortopts = "lak:r:b:c:x:h";
 
 static const struct option longopts[] = {
   {"loose", no_argument, NULL, 'l'},
+  {"all-variant", no_argument, NULL, 'a'},
   {"kmer-size", required_argument, NULL, 'k'},
   {"ref-kmer", required_argument, NULL, 'r'},
   {"bf-size", required_argument, NULL, 'b'},
@@ -42,6 +44,9 @@ void parse_arguments(int argc, char **argv) {
     switch (c) {
     case 'l':
       opt::strict_mode = false;
+      break;
+    case 'a':
+      opt::all_variants = true;
       break;
     case 'k':
       arg >> opt::k;

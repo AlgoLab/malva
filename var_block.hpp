@@ -131,7 +131,10 @@ public:
                 << number_variants_out++ << '\t' << variants[var_idx].ref_sub << '\t';
       uint varc = 0;
       for (const int &alt_id : elem.second) {
-        cout << variants[var_idx].alts[alt_id-1]; //-1 since the alt_id starts from 1 (it is 0 for the reference)
+	if(alt_id == 0)
+	  cout << "@";
+	else
+	  cout << variants[var_idx].alts[alt_id-1]; //-1 since the alt_id starts from 1 (it is 0 for the reference)
         ++varc;
         if(varc != elem.second.size())
           cout << ',';

@@ -95,14 +95,20 @@ std::map<int, std::set<int>> get_well_covered_variants(BF &bf, const VK_GROUP &k
   std::map<int, std::set<int>> wcvs;
   for(const auto &v : kmers) {
     // For each variant
+    bool is_good = false;
     for(const auto &p : v.second) {
       // For each allele of the variant
       for(const auto &kmer : p.second) {
         // For each kmer of the allele of the variant
         uint w = bf.get_count(kmer);
-        if(w >= opt::min_coverage && w <= opt::max_coverage)
+        if(w >= opt::min_coverage) { //&& w <= opt::max_coverage) {
           wcvs[v.first].insert(p.first);
+	  is_good = true;
+	}
       }
+    }
+    if(opt::all_variants && !is_good) {
+      wcvs[v.first].insert(0);
     }
   }
   return wcvs;
