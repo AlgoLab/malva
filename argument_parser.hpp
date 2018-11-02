@@ -6,7 +6,7 @@
 #include <getopt.h>
 
 static const char *USAGE_MESSAGE =
-  "Usage: malva [-k KMER-SIZE] <reference.fa> <variants.vcf>";
+  "Usage: malva [-a] [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MIN-COV] <reference.fa> <variants.vcf> <kmc_output_prefix>\n";
 
 namespace opt {
   static bool strict_mode = true;
@@ -15,14 +15,14 @@ namespace opt {
   static uint ref_k = 43;
   static uint bf_size = ((uint)0b1 << 31);
   static uint min_coverage = 30;
-  static uint max_coverage = 251;
+  // static uint max_coverage = 251;
   // static size_t nThreads = 1;
   static std::string fasta_path;
   static std::string vcf_path;
   static string kmc_sample_path;
 }
 
-static const char *shortopts = "lak:r:b:c:x:h";
+static const char *shortopts = "lak:r:b:c:h";
 
 static const struct option longopts[] = {
   {"loose", no_argument, NULL, 'l'},
@@ -31,7 +31,7 @@ static const struct option longopts[] = {
   {"ref-kmer", required_argument, NULL, 'r'},
   {"bf-size", required_argument, NULL, 'b'},
   {"min-coverage", required_argument, NULL, 'c'},
-  {"max-coverage", required_argument, NULL, 'x'},
+  // {"max-coverage", required_argument, NULL, 'x'},
   // {"threads", no_argument, NULL, 't'},
   {"help", no_argument, NULL, 'h'},
   {NULL, 0, NULL, 0}};
@@ -62,12 +62,12 @@ void parse_arguments(int argc, char **argv) {
     case 'c':
       arg >> opt::min_coverage;
       break;
-    case 'x':
-      arg >> opt::max_coverage;
-      break;
-      // case 't':
-      //   arg >> opt::nThreads;
-      //   break;
+    // case 'x':
+    //   arg >> opt::max_coverage;
+    //   break;
+    // case 't':
+    //   arg >> opt::nThreads;
+    //   break;
     case '?':
       die = true;
       break;
