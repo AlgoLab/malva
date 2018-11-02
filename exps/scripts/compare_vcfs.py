@@ -1,10 +1,17 @@
-import sys
+import sys, argparse
 
 from pysam import VariantFile
 
 def main():
-    truth = VariantFile(sys.argv[1], 'r')
-    output = VariantFile(sys.argv[2], 'r')
+    parser = argparse.ArgumentParser(description='Script to compare two VCFs based on ref position and genotyped allele.')
+    parser.add_argument('--all', dest='all_mode', help='Compare all lines, not only the one with genotype different from 0|0',
+                        required=False, action='store_true')
+    parser.add_argument('truth', help='Path to first VCF (used as truth)')
+    parser.add_argument('vcf', help='Path to second VCF')
+    args = parser.parse_args()
+
+    truth = VariantFile(args.truth, 'r')
+    output = VariantFile(args.vcf, 'r')
 
     truth_alts = set()
     total = 0
@@ -19,7 +26,10 @@ def main():
                 if ap2 != 0:
                     alts.append(record.alts[ap2-1])
         for alt in alts:
-            truth_alts.add((record.pos, alt))
+            if alt[0] != '<':
+                truth_alts.add((record.pos, alt))
+        if args.all_mode and len(alts) == 0:
+            truth_alts.add((record.pos, '@'))
 
     truth_alts = set(truth_alts)
 
@@ -35,7 +45,9 @@ def main():
 
     # print("{:>7},{:>7},{:>7},{:>7},{:>7}".format("TP", "FP", "FN", "P", "R"))
     # print("{:>7},{:>7},{:>7},{:>7.3f},{:>7.3f}".format(tp, fp, fn, 100*tp/(tp+fp), 100*tp/(tp+fn)))
-    print("{},{},{},{},{}".format(tp, fp, fn, round(100*tp/(tp+fp), 3), round(100*tp/(tp+fn), 3)), sep=',')
+    P = 100*tp/(tp+fp) if tp+fp != 0 else 0
+    R = 100*tp/(tp+fn) if tp+fn != 0 else 0
+    print("{},{},{},{},{}".format(tp, fp, fn, round(P, 3), round(R, 3)), sep=',')
 
     return 0
 
