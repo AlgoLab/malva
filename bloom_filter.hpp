@@ -55,23 +55,17 @@ public:
   ~BF() {}
 
   void add_key(const std::string &kmer) {
-    std::string uc_kmer(kmer);
-    transform(uc_kmer.begin(), uc_kmer.end(), uc_kmer.begin(), ::toupper);
-    uint64_t hash = _get_hash(uc_kmer);
+    uint64_t hash = _get_hash(kmer);
     _bf[hash % _size] = 1;
   }
 
   void add_refkey(const std::string &kmer) {
-    std::string uc_kmer(kmer);
-    transform(uc_kmer.begin(), uc_kmer.end(), uc_kmer.begin(), ::toupper);
-    uint64_t hash = _get_hash(uc_kmer);
+    uint64_t hash = _get_hash(kmer);
     _bf[hash % _size] = 0;
   }
 
   bool test_key(const std::string &kmer) const {
-    std::string uc_kmer(kmer);
-    transform(uc_kmer.begin(), uc_kmer.end(), uc_kmer.begin(), ::toupper);
-    uint64_t hash = _get_hash(uc_kmer);
+    uint64_t hash = _get_hash(kmer);
     return _bf[hash % _size];
   }
 
@@ -84,9 +78,7 @@ public:
   bool increment(const std::string &kmer) {
     if (!_mode)
       return false;
-    std::string uc_kmer(kmer);
-    transform(uc_kmer.begin(), uc_kmer.end(), uc_kmer.begin(), ::toupper);
-    uint64_t hash = _get_hash(uc_kmer);
+    uint64_t hash = _get_hash(kmer);
     size_t bf_idx = hash % _size;
     if (_bf[bf_idx]) {
       size_t cnts_idx = _brank(bf_idx);
@@ -98,9 +90,7 @@ public:
   bool increment(const std::string &kmer, const uint32 counter) {
     if (!_mode)
       return false;
-    std::string uc_kmer(kmer);
-    transform(uc_kmer.begin(), uc_kmer.end(), uc_kmer.begin(), ::toupper);
-    uint64_t hash = _get_hash(uc_kmer);
+    uint64_t hash = _get_hash(kmer);
     size_t bf_idx = hash % _size;
     if (_bf[bf_idx]) {
       size_t cnts_idx = _brank(bf_idx);
@@ -112,9 +102,7 @@ public:
 
   uint8_t get_count(const std::string &kmer) const {
     if (_mode) {
-      std::string uc_kmer(kmer);
-      transform(uc_kmer.begin(), uc_kmer.end(), uc_kmer.begin(), ::toupper);
-      uint64_t hash = _get_hash(uc_kmer);
+      uint64_t hash = _get_hash(kmer);
       size_t bf_idx = hash % _size;
       if (_bf[bf_idx])
         return _counts[_brank(bf_idx)];

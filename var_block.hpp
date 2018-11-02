@@ -103,7 +103,7 @@ public:
             kmer += suffix;
           } else
             kmer.erase(kmer.size() - abs(missing_suffix), abs(missing_suffix));
-
+	  transform(kmer.begin(), kmer.end(), kmer.begin(), ::toupper);
           // std::cout << "- " << kmer << " (" << kmer.size() << ")" << std::endl;
           //std::cout << missing_prefix << " - (" << first_part_size << "|" << second_part_size << ") - " << missing_suffix << std::endl;
 

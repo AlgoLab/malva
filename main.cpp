@@ -181,6 +181,7 @@ int main(int argc, char *argv[]) {
       std::string ref_ksub(reference->seq.s + p, opt::k);
       if (bf.test_key(ref_ksub)) {
 	std::string context(reference->seq.s + p - ((opt::ref_k - opt::k) / 2), opt::ref_k);
+	transform(context.begin(), context.end(), context.begin(), ::toupper);
         ref_bf.add_key(context);
       }
     }
