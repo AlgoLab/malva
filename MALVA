@@ -1,71 +1,69 @@
 #!/bin/bash
-UNIQUE_ID=$$
+
+SCRIPT_NAME=$(basename $0)
 BIN_NAME="malva"
 EXECUTABLE="$(dirname $0)/${BIN_NAME}"
-SCRIPT_NAME="$(basename $0)"
 KMC_BIN="$(dirname $0)/KMC/bin/kmc"
-DEFAULT_KSIZE=15
-DEFAULT_REF_KSIZE=31
-DEFAULT_COVERAGE=30
-KMC_DEFAULT_DIR="./kmc_wk_dir_${UNIQUE_ID}"
-USAGE=$'Usage: '"${SCRIPT_NAME}"' [-k ksize] [-m min_coverage] [-x max_coverage] [-l] <reference> <variants> <sample>
+DEFAULT_KSIZE=35
+DEFAULT_REF_KSIZE=43
+DEFAULT_COVERAGE=1
+
+USAGE=$'\nUsage: '"${SCRIPT_NAME}"' [-k ksize] [-r Ksize] [-m min_coverage] <reference> <variants> <sample> <out_vcf>
 Preprocesses the VCF file and calls '"${BIN_NAME}"' and outputs a VCF containing the
-known variants in <sample> to STDOUT.
+known variants in <sample>.
 
 Ideally this script will be depracated soon.
 
 Arguments:
      -h              print this help and exit
+     -a		     output all variants (also the one genotyped 0|0)
      -k              kmers length (default:'"${DEFAULT_KSIZE}"')
      -r              reference kmers length (default:'"${DEFAULT_REF_KSIZE}"')
      -m              minimum coverage for filtering variants (default:'"${DEFAULT_COVERAGE}"')
-     -x              maximum coverage for filtering variants (default: unlimited)
-     -l              loose mode (default: false)
      -t              number of threads used by KMC (default: 1)
-     -u              maximum (even) number of neighbouring variants considered
-                     for each signature (default: 4)
 
 Positional arguments:
      <reference>     reference file in FASTA/FASTQ format
      <variants>      variants file in VCF format
-     <sample>        sample file in FASTA/FASTQ format'
+     <sample>        sample file in FASTA/FASTQ format
+     <out_vcf>       path to output VCF
+'
+
+#     -x              maximum coverage for filtering variants (default: unlimited)
+#     -u              maximum (even) number of neighbouring variants considered
+#                     for each signature (default: 4)
+#     -l              loose mode (default: false)
 
 reference=""
 vcf_file=""
 sample=""
+out_vcf=""
 k=${DEFAULT_KSIZE}
 refk=${DEFAULT_REF_KSIZE}
 min_coverage=${DEFAULT_COVERAGE}
-max_coverage=251
-max_combinations=4
 MAX_MEMORY=3
-loose_flag=""
-kmc_out_file="kmc_${UNIQUE_ID}.kmercount"
 threads_num=1
+all_flag=""
 
-while getopts "r:t:m:x:k:u:hl" flag; do
+while getopts "k:r:t:m:ha" flag; do
     case "${flag}" in
         t) threads_num=${OPTARG}
-	       ;;
+	   ;;
+	a) all_flag="-a"
+	   ;;
         h) $(>&2 echo "${USAGE}")
            exit 1
            ;;
         m) min_coverage=${OPTARG}
            ;;
-        x) max_coverage=${OPTARG}
-           ;;
         k) k=${OPTARG}
            ;;
         r) refk=${OPTARG}
            ;;
-        l) loose_flag="-l"
-           ;;
-        u) max_combinations=${OPTARG}
-           ;;
     esac
 done
 
-if [[ $# -lt $((${OPTIND} + 2)) ]]
+if [[ $# -lt $((${OPTIND} + 3)) ]]
 then
     (>&2 echo "ERROR: Wrong number of arguments.")
     (>&2 echo "")
@@ -76,28 +74,27 @@ fi
 reference=${@:$OPTIND:1}
 vcf_file=${@:$OPTIND+1:1}
 sample=${@:$OPTIND+2:1}
+out_vcf=${@:$OPTIND+3:1}
 
-(>&2 echo "[${SCRIPT_NAME}] Process ID is ${UNIQUE_ID}")
-(>&2 echo  "[${SCRIPT_NAME}] Running KMC")
+out_dir=$(dirname ${out_vcf})
+uniq_name=$(basename ${sample})_k${k}_K${refk}
+KMC_DEFAULT_DIR="${out_dir}/${uniq_name}.kmc_tmp"
+kmc_out_file="${out_dir}/${uniq_name}.kmercount"
+
 mkdir -p ${KMC_DEFAULT_DIR}
-\time -v -o /tmp/kmc-time-${UNIQUE_ID}.txt ${KMC_BIN} -cs251 -m${MAX_MEMORY} -k${refk} -t${threads_num} -fm ${sample} ${kmc_out_file} ${KMC_DEFAULT_DIR} > /dev/null
-
-(>&2 echo  "[${SCRIPT_NAME}] Preprocessing VCF")
-if [[ $vcf_file =~ \.gz$ ]]
+if [ ! -f ${kmc_out_file}.kmc_pre ] && [ ! -f ${kmc_out_file}.kmc_suf ]
 then
-    filteredVCF=$(dirname ${vcf_file})/$(basename ${vcf_file} .vcf.gz).${UNIQUE_ID}.filtered.vcf.gz
-    zcat ${vcf_file} | cut -f 1-8 | gzip > ${filteredVCF}
+    (>&2 echo  "[${SCRIPT_NAME}] Running KMC")
+    ${KMC_BIN} -m${MAX_MEMORY} -k${refk} -t${threads_num} -fm ${sample} ${kmc_out_file} ${KMC_DEFAULT_DIR} &> ${kmc_out_file}.log
 else
-    filteredVCF=$(dirname ${vcf_file})/$(basename ${vcf_file} .vcf).${UNIQUE_ID}.filtered.vcf
-    cat ${vcf_file} | cut -f 1-8 > ${filteredVCF}
+    (>&2 echo  "[${SCRIPT_NAME}] Found KMC output")
 fi
 
 (>&2 echo "[${SCRIPT_NAME}] Running ${BIN_NAME}")
-\time -v -o /tmp/filter-time-${UNIQUE_ID}.txt ${EXECUTABLE} ${loose_flag} -t ${threads_num} -k ${k} -r ${refk} -c ${min_coverage} -x ${max_coverage} -u ${max_combinations} ${reference} ${filteredVCF} ${kmc_out_file}
+${EXECUTABLE} ${all_flag} -k ${k} -r ${refk} -c ${min_coverage} ${reference} ${vcf_file} ${kmc_out_file} > ${out_vcf}
+#-t ${threads_num}
 
 (>&2 echo "[${SCRIPT_NAME}] Cleaning up")
-rm ${filteredVCF}
 rm -rf ${KMC_DEFAULT_DIR}
-rm ${kmc_out_file}*
 
 exit 0
