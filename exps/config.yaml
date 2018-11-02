@@ -9,8 +9,11 @@ resources:
     res : results
     malva_out : malva
   malva: malva
+  big_bam : RMNISTHS_30xdownsample.bam
+  truth_sample : NA12878
   chroms:
     # - chr1
+    - chr17
     # - chr14
     - chr22
   samples:
