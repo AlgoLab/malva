@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
       ref_ksub.erase(0,1);
       ref_ksub += c2;
       if (bf.test_key(ref_ksub)) {
-    ref_bf.add_key(context);
+	ref_bf.add_key(context);
       }
     }
   }
@@ -235,8 +235,7 @@ int main(int argc, char *argv[]) {
     transform(context.begin(), context.end(), context.begin(), ::toupper);
     if(!ref_bf.test_key(context)) {
       std::string kmer(context.c_str() + ((opt::ref_k - opt::k) / 2), opt::k);
-      if (bf.test_key(kmer))
-	bf.increment(kmer, counter);
+      bf.increment(kmer, counter);
     }
   }
 
