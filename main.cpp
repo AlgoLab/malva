@@ -175,19 +175,48 @@ int main(int argc, char *argv[]) {
 
   bf.switch_mode();
 
+  pelapsed("BF creation complete (" + std::to_string(tot_vcf_kmers) + ")");
+
   BF ref_bf(opt::bf_size);
+  // New method: each iteration, the first character of the kmer is removed
+  // and a new character is added at the end
   if (opt::strict_mode) {
-    for (size_t p = (opt::ref_k - opt::k) / 2; p < reference->seq.l - opt::ref_k; ++p) {
-      std::string ref_ksub(reference->seq.s + p, opt::k);
+    std::string ref_ksub(reference->seq.s + (opt::ref_k-opt::k)/2, opt::k);
+    std::string context(reference->seq.s, opt::ref_k);
+    transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
+    transform(context.begin(), context.end(), context.begin(), ::toupper);
+    if (bf.test_key(ref_ksub)) {
+      ref_bf.add_key(context);
+    }
+    for(uint p = opt::ref_k; p < reference->seq.l; ++p) {
+      char c1 = toupper(reference->seq.s[p]);
+      context.erase(0,1);
+      context += c1;
+      char c2 = toupper(reference->seq.s[p - (opt::ref_k-opt::k)/2]);
+      ref_ksub.erase(0,1);
+      ref_ksub += c2;
       if (bf.test_key(ref_ksub)) {
-	std::string context(reference->seq.s + p - ((opt::ref_k - opt::k) / 2), opt::ref_k);
-	transform(context.begin(), context.end(), context.begin(), ::toupper);
-        ref_bf.add_key(context);
+    ref_bf.add_key(context);
       }
     }
   }
 
-  pelapsed("BF creation complete (" + std::to_string(tot_vcf_kmers) + ")");
+  /**
+  // Old method: each kmer is read from the reference
+  if (opt::strict_mode) {
+    for (size_t p = (opt::ref_k - opt::k) / 2; p < reference->seq.l - opt::ref_k; ++p) {
+      std::string ref_ksub(reference->seq.s + p, opt::k);
+      transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
+      if (bf.test_key(ref_ksub)) {
+        std::string context(reference->seq.s + p - ((opt::ref_k - opt::k) / 2), opt::ref_k);
+        transform(context.begin(), context.end(), context.begin(), ::toupper);
+        ref_bf.add_key(context);
+      }
+    }
+  }
+  **/
+
+  pelapsed("Reference BF creation complete");
 
   // STEP 2: test variants present in read sample
   CKMCFile kmer_db;
