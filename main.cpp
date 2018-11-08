@@ -232,6 +232,7 @@ int main(int argc, char *argv[]) {
   std::string context;
   while(kmer_db.ReadNextKmer(kmer_obj, counter)) {
     kmer_obj.to_string(context);
+    transform(context.begin(), context.end(), context.begin(), ::toupper);
     if(!ref_bf.test_key(context)) {
       std::string kmer(context.c_str() + ((opt::ref_k - opt::k) / 2), opt::k);
       if (bf.test_key(kmer))
