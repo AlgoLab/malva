@@ -131,7 +131,7 @@ struct Variant {
    * Return true if (this) variant is gt-compatible with var
    **/
   bool is_compatible_with(const Variant &var) {
-    for(uint i=0; i<genotypes.size(); ++i) {
+    for(const uint i : positive_samples) {
       if(phasing[i]) {
         if((genotypes[i].first != 0 && var.genotypes[i].first != 0) ||
            (genotypes[i].second != 0 && var.genotypes[i].second != 0))
