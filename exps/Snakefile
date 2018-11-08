@@ -59,6 +59,11 @@ rule run_correct_sample:
         expand(os.path.join(samples_fold, "{chrom}.corrected.fq.gz"),
                chrom = chroms)
 
+rule run_extract_spop_from_vcf:
+    input:
+        expand(os.path.join(vcfs_fold, "{chrom}.EUR.vcf.gz"),
+               chrom = chroms)
+
 rule run_extract_truth_from_vcf:
     input:
         expand(os.path.join(truth_fold, "{chrom}.vcf.gz"),
