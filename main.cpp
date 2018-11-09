@@ -114,6 +114,28 @@ std::map<int, std::set<int>> get_well_covered_variants(BF &bf, const VK_GROUP &k
   return wcvs;
 }
 
+/**
+ * Method to clean and print VCF header. It adds GT and GQ FORMAT,
+ * removes all samples, and adds donor sample.
+ **/
+void print_cleaned_header(bcf_hdr_t *vcf_header) {
+  // Adding format - if already present, they won't be added
+  bcf_hdr_append(vcf_header, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
+  bcf_hdr_append(vcf_header, "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">");
+
+  // Adding donor sample and removing all other samples
+  const char *new_sample = "DONOR";
+  bcf_hdr_add_sample(vcf_header, new_sample);
+  bcf_hdr_sync(vcf_header);
+  bcf_hdr_set_samples(vcf_header, new_sample, 0);
+
+  // Formatting and printing header
+  kstring_t htxt = {0, 0, 0};
+  bcf_hdr_format(vcf_header, 0, &htxt);
+  std::cout << htxt.s;
+  free(htxt.s);
+}
+
 int main(int argc, char *argv[]) {
   hts_set_log_level(HTS_LOG_OFF);
 
@@ -254,12 +276,12 @@ int main(int argc, char *argv[]) {
   // STEP 3: check if variants in vcf are covered enough
   vcf = bcf_open(opt::vcf_path.c_str(), "r");
   vcf_header = bcf_hdr_read(vcf);
+  print_cleaned_header(vcf_header);
+  bcf_hdr_destroy(vcf_header);
+  bcf_close(vcf);
 
-  kstring_t htxt = {0, 0, 0};
-  bcf_hdr_format(vcf_header, 0, &htxt);
-  cout << htxt.s;
-  free(htxt.s);
-
+  vcf = bcf_open(opt::vcf_path.c_str(), "r");
+  vcf_header = bcf_hdr_read(vcf);
   vcf_record = bcf_init();
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
     bcf_unpack(vcf_record, BCF_UN_STR);
