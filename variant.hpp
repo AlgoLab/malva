@@ -103,47 +103,6 @@ struct Variant {
     }
     return -1;
   }
-  
-  /**
-   * Return true if (this) variant overlaps with var
-   * i.e. they are incompatible
-   **/
-  bool overlaps_with(const Variant &var) const {
-    return (ref_pos <= var.ref_pos) &&
-      (var.ref_pos < ref_pos + ref_size);
-  }
-
-  /**
-   * Return true if (this) variant is k/2-near (on the right) to var
-   **/
-  bool is_near_to(const Variant &var, const int &k, const int &sum_to_add) const {
-    return ref_pos + ref_size - min_size - 1 + sum_to_add + ceil((float)k / 2) >= var.ref_pos;
-  }
-
-  /**
-   * Return true if (this) variant is k/2-near (on the right) to var
-   **/
-  bool is_near_to(const Variant &var, const int &k) const {
-    return is_near_to(var, k, 0);
-  }
-  
-  /**
-   * Return true if (this) variant is gt-compatible with var
-   **/
-  bool is_compatible_with(const Variant &var) {
-    for(const uint i : positive_samples) {
-      if(phasing[i]) {
-        if((genotypes[i].first != 0 && var.genotypes[i].first != 0) ||
-           (genotypes[i].second != 0 && var.genotypes[i].second != 0))
-          return true;
-      } else {
-        if((genotypes[i].first != 0 || genotypes[i].second != 0) &&
-           (var.genotypes[i].first != 0 || var.genotypes[i].second != 0))
-          return true;
-      }
-    }
-    return false;
-  }
 };
 
 #endif
