@@ -123,27 +123,26 @@ public:
     return kmers;
   }
 
-  // TODO: print in VCF
-  void output_variants(std::map<int, std::set<int>> well_covered_variants) {
+  void output_variants(std::map<int, std::set<int>> well_covered_variants, ofstream &out_vcf) {
     for (const auto &elem : well_covered_variants) {
       int var_idx = elem.first;
-      std::cout << variants[var_idx].seq_name << '\t' << variants[var_idx].ref_pos + 1 << '\t'
-                << number_variants_out++ << '\t' << variants[var_idx].ref_sub << '\t';
+      out_vcf << variants[var_idx].seq_name << '\t' << variants[var_idx].ref_pos + 1 << '\t'
+              << number_variants_out++ << '\t' << variants[var_idx].ref_sub << '\t';
       uint varc = 0;
       std::string gt;
       for (const int &alt_id : elem.second) {
-	if(alt_id == 0) {
-	  cout << "@";
-	  gt = "0/0:100";
-	} else {
-	  cout << variants[var_idx].alts[alt_id-1]; //-1 since the alt_id starts from 1 (it is 0 for the reference)
-	  gt = "1/0:100";
-	}
+        if(alt_id == 0) {
+          out_vcf << "@";
+          gt = "0/0:100";
+        } else {
+          out_vcf << variants[var_idx].alts[alt_id-1]; //-1 since the alt_id starts from 1 (it is 0 for the reference)
+          gt = "1/0:100";
+        }
         ++varc;
         if(varc != elem.second.size())
-          cout << ',';
+          out_vcf << ',';
       }
-      std::cout << "\t100\tPASS\tVT=SNP\tGT:GQ\t" << gt << std::endl;
+      out_vcf << "\t100\tPASS\tVT=SNP\tGT:GQ\t" << gt << "\n";
     }
   }
 
