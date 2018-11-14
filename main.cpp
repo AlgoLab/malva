@@ -81,7 +81,7 @@ void add_kmers_to_bf(BF &bf, const VK_GROUP &kmers) {
       // For each allele of the variant
       for(const auto &kmer : p.second) {
         // For each kmer of the allele of the variant
-        bf.add_key(kmer);
+        bf.add_key(kmer.c_str());
       }
     }
   }
@@ -100,7 +100,7 @@ std::map<int, std::set<int>> get_well_covered_variants(BF &bf, const VK_GROUP &k
       // For each allele of the variant
       for(const auto &kmer : p.second) {
         // For each kmer of the allele of the variant
-        uint w = bf.get_count(kmer);
+        uint w = bf.get_count(kmer.c_str());
         if(w >= opt::min_coverage) { //&& w <= opt::max_coverage) {
           wcvs[v.first].insert(p.first);
 	  is_good = true;
@@ -207,15 +207,13 @@ int main(int argc, char *argv[]) {
   pelapsed("BF creation complete (" + std::to_string(tot_vcf_kmers) + ")");
 
   BF ref_bf(opt::bf_size);
-  // New method: each iteration, the first character of the kmer is removed
-  // and a new character is added at the end
   if (opt::strict_mode) {
     std::string ref_ksub(reference->seq.s + (opt::ref_k-opt::k)/2, opt::k);
     std::string context(reference->seq.s, opt::ref_k);
     transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
     transform(context.begin(), context.end(), context.begin(), ::toupper);
-    if (bf.test_key(ref_ksub)) {
-      ref_bf.add_key(context);
+    if (bf.test_key(ref_ksub.c_str())) {
+      ref_bf.add_key(context.c_str());
     }
     for(uint p = opt::ref_k; p < reference->seq.l; ++p) {
       char c1 = toupper(reference->seq.s[p]);
@@ -224,26 +222,10 @@ int main(int argc, char *argv[]) {
       char c2 = toupper(reference->seq.s[p - (opt::ref_k-opt::k)/2]);
       ref_ksub.erase(0,1);
       ref_ksub += c2;
-      if (bf.test_key(ref_ksub)) {
-	ref_bf.add_key(context);
-      }
+      if (bf.test_key(ref_ksub.c_str()))
+        ref_bf.add_key(context.c_str());
     }
   }
-
-  /**
-  // Old method: each kmer is read from the reference
-  if (opt::strict_mode) {
-    for (size_t p = (opt::ref_k - opt::k) / 2; p < reference->seq.l - opt::ref_k; ++p) {
-      std::string ref_ksub(reference->seq.s + p, opt::k);
-      transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
-      if (bf.test_key(ref_ksub)) {
-        std::string context(reference->seq.s + p - ((opt::ref_k - opt::k) / 2), opt::ref_k);
-        transform(context.begin(), context.end(), context.begin(), ::toupper);
-        ref_bf.add_key(context);
-      }
-    }
-  }
-  **/
 
   pelapsed("Reference BF creation complete");
 
@@ -253,25 +235,17 @@ int main(int argc, char *argv[]) {
   kmer_db.Info(klen, mode, min_counter, pref_len, sign_len, min_c, max_c, tot_kmers);
   CKmerAPI kmer_obj(klen);
 
-  std::string context;
+  char context[opt::ref_k+1];
   while(kmer_db.ReadNextKmer(kmer_obj, counter)) {
     kmer_obj.to_string(context);
-    transform(context.begin(), context.end(), context.begin(), ::toupper);
+    transform(context, context + opt::ref_k, context, ::toupper);
     if(!ref_bf.test_key(context)) {
-      std::string kmer(context.c_str() + ((opt::ref_k - opt::k) / 2), opt::k);
+      char kmer[opt::k+1];
+      strncpy(kmer, context + ((opt::ref_k - opt::k) / 2), opt::k);
+      kmer[opt::k] = '\0';
       bf.increment(kmer, counter);
     }
   }
-
-  /**
-  // OLD - without context
-  std::string kmer;
-  while(kmer_db.ReadNextKmer(kmer_obj, counter)) {
-    kmer_obj.to_string(kmer);
-    if (bf.test_key(kmer))
-      bf.increment(kmer, counter);
-  }
-  **/
 
   pelapsed("BF weights created");
 
