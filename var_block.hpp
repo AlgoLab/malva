@@ -123,26 +123,31 @@ public:
     return kmers;
   }
 
-  void output_variants(std::map<int, std::set<int>> well_covered_variants, ofstream &out_vcf) {
+  void output_variants(std::map<int, std::set<int>> well_covered_variants) {
     for (const auto &elem : well_covered_variants) {
       int var_idx = elem.first;
-      out_vcf << variants[var_idx].seq_name << '\t' << variants[var_idx].ref_pos + 1 << '\t'
-              << number_variants_out++ << '\t' << variants[var_idx].ref_sub << '\t';
+      std::cout << variants[var_idx].seq_name << '\t' << variants[var_idx].ref_pos + 1 << '\t'
+		<< number_variants_out++ << '\t' << variants[var_idx].ref_sub << '\t';
       uint varc = 0;
       std::string gt;
+      /**
+       * TODO:
+       * - if we have more alt_id, we have to choose one
+       * - we have to print all the alternative alleles and set the
+       * correct index in the GT column
+       **/
       for (const int &alt_id : elem.second) {
+        std::cout << variants[var_idx].get_allele(alt_id);
         if(alt_id == 0) {
-          out_vcf << "@";
           gt = "0/0:100";
         } else {
-          out_vcf << variants[var_idx].alts[alt_id-1]; //-1 since the alt_id starts from 1 (it is 0 for the reference)
           gt = "1/0:100";
         }
         ++varc;
         if(varc != elem.second.size())
-          out_vcf << ',';
+          std::cout << ',';
       }
-      out_vcf << "\t100\tPASS\tVT=SNP\tGT:GQ\t" << gt << "\n";
+      std::cout << "\t100\tPASS\tVT=SNP\tGT:GQ\t" << gt << "\n";
     }
   }
 

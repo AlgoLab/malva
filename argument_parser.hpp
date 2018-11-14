@@ -20,7 +20,6 @@ namespace opt {
   static std::string fasta_path;
   static std::string vcf_path;
   static std::string kmc_sample_path;
-  static std::string output_vcf_path;
 }
 
 static const char *shortopts = "lak:r:b:c:h";
@@ -78,10 +77,10 @@ void parse_arguments(int argc, char **argv) {
     }
   }
 
-  if (argc - optind < 4) {
+  if (argc - optind < 3) {
     cerr << "malva : missing arguments\n";
     die = true;
-  } else if (argc - optind > 4) {
+  } else if (argc - optind > 3) {
     cerr << "malva : too many arguments\n";
     die = true;
   }
@@ -93,7 +92,6 @@ void parse_arguments(int argc, char **argv) {
   opt::fasta_path = argv[optind++];
   opt::vcf_path = argv[optind++];
   opt::kmc_sample_path = argv[optind++];
-  opt::output_vcf_path = argv[optind++];
 }
 
 #endif

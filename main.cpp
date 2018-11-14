@@ -20,7 +20,6 @@
 #include "argument_parser.hpp"
 #include "var_block.hpp"
 #include "bloom_filter.hpp"
-// #include "string_3bits.hpp"
 
 auto start_t = chrono::high_resolution_clock::now();
 
@@ -118,7 +117,7 @@ std::map<int, std::set<int>> get_well_covered_variants(BF &bf, const VK_GROUP &k
  * Method to clean and print VCF header. It adds GT and GQ FORMAT,
  * removes all samples, and adds donor sample.
  **/
-void print_cleaned_header(bcf_hdr_t *vcf_header, ofstream &out_vcf) {
+void print_cleaned_header(bcf_hdr_t *vcf_header) {
   // Adding format - if already present, they won't be added
   bcf_hdr_append(vcf_header, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
   bcf_hdr_append(vcf_header, "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">");
@@ -132,7 +131,7 @@ void print_cleaned_header(bcf_hdr_t *vcf_header, ofstream &out_vcf) {
   // Formatting and printing header
   kstring_t htxt = {0, 0, 0};
   bcf_hdr_format(vcf_header, 0, &htxt);
-  out_vcf << htxt.s;
+  std::cout << htxt.s;
   free(htxt.s);
 }
 
@@ -250,12 +249,9 @@ int main(int argc, char *argv[]) {
   pelapsed("BF weights created");
 
   // STEP 3: check if variants in vcf are covered enough
-  ofstream out_vcf;
-  out_vcf.open (opt::output_vcf_path);
-
   vcf = bcf_open(opt::vcf_path.c_str(), "r");
   vcf_header = bcf_hdr_read(vcf);
-  print_cleaned_header(vcf_header, out_vcf);
+  print_cleaned_header(vcf_header);
   bcf_hdr_destroy(vcf_header);
   bcf_close(vcf);
 
@@ -284,7 +280,7 @@ int main(int argc, char *argv[]) {
        ***/
       VK_GROUP kmers = vb.extract_kmers();
       std::map<int, std::set<int>> well_covered_variants = get_well_covered_variants(bf, kmers);
-      vb.output_variants(well_covered_variants, out_vcf);
+      vb.output_variants(well_covered_variants);
       vb.clear();
     }
     vb.add_variant(v);
@@ -298,11 +294,9 @@ int main(int argc, char *argv[]) {
      ***/
     VK_GROUP kmers = vb.extract_kmers();
     std::map<int, std::set<int>> well_covered_variants = get_well_covered_variants(bf, kmers);
-    vb.output_variants(well_covered_variants, out_vcf);
+    vb.output_variants(well_covered_variants);
     vb.clear();
   }
-
-  out_vcf.close();
 
   bcf_hdr_destroy(vcf_header);
   bcf_destroy(vcf_record);
