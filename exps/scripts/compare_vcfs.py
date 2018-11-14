@@ -36,7 +36,15 @@ def main():
     tp = 0
     fp = 0
     for record in output:
-        for alt in record.alts:
+        alts = []
+        for (type_name, content) in record.samples.items()[0][1].items():
+            if type_name == 'GT':
+                if content == (0,0):
+                    if args.all_mode:
+                        alts = ["@"]
+                else:
+                    alts = record.alts
+        for alt in alts:
             if (record.pos, alt) in truth_alts:
                 tp+=1
             else:
