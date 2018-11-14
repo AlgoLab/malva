@@ -3,7 +3,7 @@
 
 #include "variant.hpp"
 
-typedef std::map<int, std::map<int, std::vector<std::string>>> VK_GROUP;
+typedef std::map<int, std::map<int, std::vector<std::vector<std::string>>>> VK_GROUP;
 
 /**
  * Extend a container with another
@@ -47,7 +47,7 @@ public:
     VK_GROUP kmers;
 
     for(uint v_index = 0; v_index < variants.size(); ++v_index) {
-      std::map<int, std::vector<std::string>> _kmers;
+      std::map<int, std::vector<std::vector<std::string>>> _kmers;
 
       Variant *v = &variants[v_index];
 
@@ -64,56 +64,73 @@ public:
         // !!! the body of this for could be split in more methods !!!
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         for(const std::vector<std::string> aac : alt_allele_combs) {
-          std::string kmer = "";
-          int mid_pos_in_kmer = 0;
-          std::string mid_allele;
-          for(uint j = 0; j<aac.size(); ++j) {
-            std::string rs;
-            if(j>=ref_subs.size())
-              rs = "";
-            else
-              rs = ref_subs[j];
+	  std::vector<std::string> ksss; //kmers sequences
+	  std::string mid_allele;
 
-            // store the position of the mid allele and the mid allele inside the kmer to use later for extending the kmer
-            if(comb[j] == (int)v_index) {
-              mid_pos_in_kmer = kmer.size();
-              mid_allele = aac[j];
-            }
-            kmer += aac[j] + rs;
-          }
+	  if(aac.size() == 1 && aac[0].size() >= (uint)k) {
+	    mid_allele = aac[0];
 
-          // get how much we must extend or cut
-          int first_part_size = mid_pos_in_kmer + mid_allele.size()/2;
-          int second_part_size = kmer.size() - first_part_size;
-          int missing_prefix = k/2 - first_part_size;
-          int missing_suffix = ceil((float)k/2) - second_part_size;
+	    std::string kmer = mid_allele.substr(0,k);
+	    transform(kmer.begin(), kmer.end(), kmer.begin(), ::toupper);
+	    ksss.push_back(kmer);
 
-          // extending/cutting on the left
-          if(missing_prefix >= 0) {
-            Variant *first_var_in_comb = &variants[comb.front()];
-            std::string prefix (reference + first_var_in_comb->ref_pos - missing_prefix, missing_prefix);
-            kmer = prefix + kmer;
-          } else
-            kmer.erase(0,abs(missing_prefix));
+	    for(uint p = k; p < mid_allele.size(); ++p) {
+	      char c = toupper(mid_allele[p]);
+	      kmer.erase(0,1);
+	      kmer += c;
+	      ksss.push_back(kmer);
+	    }
+	  } else {
+	    std::string kmer = "";
+	    int mid_pos_in_kmer = 0;
+	    for(uint j = 0; j<aac.size(); ++j) {
+	      std::string rs;
+	      if(j>=ref_subs.size())
+		rs = "";
+	      else
+		rs = ref_subs[j];
 
-          // extending/cutting on the right
-          if(missing_suffix >= 0) {
-            Variant *last_var_in_comb = &variants[comb.back()];
-            std::string suffix (reference + last_var_in_comb->ref_pos + last_var_in_comb->ref_size, missing_suffix);
-            kmer += suffix;
-          } else
-            kmer.erase(kmer.size() - abs(missing_suffix), abs(missing_suffix));
-	  transform(kmer.begin(), kmer.end(), kmer.begin(), ::toupper);
-          // std::cout << "- " << kmer << " (" << kmer.size() << ")" << std::endl;
-          //std::cout << missing_prefix << " - (" << first_part_size << "|" << second_part_size << ") - " << missing_suffix << std::endl;
+	      // store the position of the mid allele and the mid allele inside the kmer to use later for extending the kmer
+	      if(comb[j] == (int)v_index) {
+		mid_pos_in_kmer = kmer.size();
+		mid_allele = aac[j];
+	      }
+	      kmer += aac[j] + rs;
+	    }
 
-          // add k-mer (to _kmers)
+	    // get how much we must extend or cut
+	    int first_part_size = mid_pos_in_kmer + mid_allele.size()/2;
+	    int second_part_size = kmer.size() - first_part_size;
+	    int missing_prefix = k/2 - first_part_size;
+	    int missing_suffix = ceil((float)k/2) - second_part_size;
+
+	    // extending/cutting on the left
+	    if(missing_prefix >= 0) {
+	      Variant *first_var_in_comb = &variants[comb.front()];
+	      std::string prefix (reference + first_var_in_comb->ref_pos - missing_prefix, missing_prefix);
+	      kmer = prefix + kmer;
+	    } else
+	      kmer.erase(0,abs(missing_prefix));
+
+	    // extending/cutting on the right
+	    if(missing_suffix >= 0) {
+	      Variant *last_var_in_comb = &variants[comb.back()];
+	      std::string suffix (reference + last_var_in_comb->ref_pos + last_var_in_comb->ref_size, missing_suffix);
+	      kmer += suffix;
+	    } else
+	      kmer.erase(kmer.size() - abs(missing_suffix), abs(missing_suffix));
+	    transform(kmer.begin(), kmer.end(), kmer.begin(), ::toupper);
+
+	    ksss.push_back(kmer);
+	  }
+
+          // add ksss (to _kmers)
           int allele_index = v->get_allele_index(mid_allele);
           if(_kmers.find(allele_index) != _kmers.end()) {
-            _kmers[allele_index].push_back(kmer);
+            _kmers[allele_index].push_back(ksss);
           } else {
-            std::vector<std::string> tmp_kmers;
-            tmp_kmers.push_back(kmer);
+            std::vector<std::vector<std::string>> tmp_kmers;
+            tmp_kmers.push_back(ksss);
             _kmers[allele_index] = tmp_kmers;
           }
         }

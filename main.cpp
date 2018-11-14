@@ -33,17 +33,21 @@ void pelapsed(const string &s = "") {
 KSEQ_INIT(gzFile, gzread)
 
 // Useless debug methods -----------------------------------------------------
+// !!! (maybe) Deprecated function !!!
 void check_kmers(const VK_GROUP &kmers) {
   for (VK_GROUP::const_iterator it = kmers.begin(); it != kmers.end(); ++it) {
     for (const auto &p : it->second) {
-      for (const auto k : p.second) {
-        if(k.size() != opt::k)
-          std::cout << "#" << std::endl;
+      for (const auto &Ks : p.second) {
+	for(const auto &k : Ks) {
+	  if(k.size() != opt::k)
+	    std::cout << "#" << std::endl;
+	}
       }
     }
   }
 }
 
+// !!! (maybe) Deprecated function !!!
 void print_kmers(const VK_GROUP &kmers) {
   for (VK_GROUP::const_iterator it = kmers.begin(); it != kmers.end(); ++it) {
     int vID = it->first;
@@ -51,8 +55,9 @@ void print_kmers(const VK_GROUP &kmers) {
     for (const auto &p : it->second) {
       int altID = p.first;
       std::cout << " " << altID << ": ";
-      for (const auto k : p.second) {
-        std::cout << k << " ";
+      for (const auto &Ks : p.second) {
+	for (const auto &k : Ks)
+	  std::cout << k << " ";
       }
       std::cout << std::endl;
     }
@@ -63,7 +68,8 @@ int count_kmers(const VK_GROUP &kmers) {
   int N = 0;
   for (VK_GROUP::const_iterator it = kmers.begin(); it != kmers.end(); ++it) {
     for (const auto &p : it->second) {
-      N += p.second.size();
+      for (const auto &Ks : p.second)
+	N += Ks.size();
     }
   }
   return N;
@@ -78,9 +84,12 @@ void add_kmers_to_bf(BF &bf, const VK_GROUP &kmers) {
     // For each variant
     for(const auto &p : v.second) {
       // For each allele of the variant
-      for(const auto &kmer : p.second) {
-        // For each kmer of the allele of the variant
-        bf.add_key(kmer.c_str());
+      for(const auto &Ks : p.second) {
+	// For each list of kmers of the allele
+	for(const auto &kmer : Ks) {
+	  // For each kmer in the kmer list
+	  bf.add_key(kmer.c_str());
+	}
       }
     }
   }
@@ -97,17 +106,26 @@ std::map<int, std::set<int>> get_well_covered_variants(BF &bf, const VK_GROUP &k
     bool is_good = false;
     for(const auto &p : v.second) {
       // For each allele of the variant
-      for(const auto &kmer : p.second) {
-        // For each kmer of the allele of the variant
-        uint w = bf.get_count(kmer.c_str());
-        if(w >= opt::min_coverage) { //&& w <= opt::max_coverage) {
-          wcvs[v.first].insert(p.first);
+      for(const auto &Ks : p.second) {
+        // For each list of kmers of the allele
+	uint kpt = 0; // kmers passing threshold
+	for(const auto &kmer : Ks) {
+	  uint w = bf.get_count(kmer.c_str());
+	  if(w >= opt::min_coverage) //&& w <= opt::max_coverage)
+	    ++kpt;
+	}
+	/**
+	 * !!! By asking that *all* kmers must be covered, we could
+	 * miss some alleles longer than k
+	 **/
+	if (kpt == Ks.size()) {
+	  wcvs[v.first].insert(p.first);
 	  is_good = true;
+	  break; // LD: I think this break is good
 	}
       }
-    }
-    if(opt::all_variants && !is_good) {
-      wcvs[v.first].insert(0);
+      if(opt::all_variants && !is_good)
+	wcvs[v.first].insert(0);
     }
   }
   return wcvs;
