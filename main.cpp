@@ -141,19 +141,26 @@ int main(int argc, char *argv[]) {
 
   parse_arguments(argc, argv);
 
-  // STEP 1: add VCF kmers to bloom filter
+  // STEP 0: open and check input files
   gzFile fasta_in = gzopen(opt::fasta_path.c_str(), "r");
   kseq_t *reference = kseq_init(fasta_in);
   kseq_read(reference);
 
   htsFile *vcf = bcf_open(opt::vcf_path.c_str(), "r");
   bcf_hdr_t *vcf_header = bcf_hdr_read(vcf);
+  bcf1_t *vcf_record = bcf_init();
 
+  CKMCFile kmer_db;
+  if (!kmer_db.OpenForListing(opt::kmc_sample_path)) {
+    std::cerr << "ERROR: cannot open " << opt::kmc_sample_path << std::endl;
+    return 1;
+  }
+
+  // STEP 1: add VCF kmers to bloom filter
   BF bf (opt::bf_size);
   VB vb (reference->seq.s, opt::k);
   int tot_vcf_kmers = 0;
 
-  bcf1_t *vcf_record = bcf_init();
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
     bcf_unpack(vcf_record, BCF_UN_STR);
 
@@ -241,13 +248,8 @@ int main(int argc, char *argv[]) {
   pelapsed("Reference BF creation complete");
 
   // STEP 2: test variants present in read sample
-  CKMCFile kmer_db;
   uint32 klen, mode, min_counter, pref_len, sign_len, min_c, counter;
   uint64 tot_kmers, max_c;
-  if (!kmer_db.OpenForListing(opt::kmc_sample_path)) {
-    std::cerr << "ERROR: cannot open " << opt::kmc_sample_path << std::endl;
-    return 1;
-  }
   kmer_db.Info(klen, mode, min_counter, pref_len, sign_len, min_c, max_c, tot_kmers);
   CKmerAPI kmer_obj(klen);
 
