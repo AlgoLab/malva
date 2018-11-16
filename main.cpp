@@ -124,9 +124,9 @@ std::map<int, std::set<int>> get_well_covered_variants(BF &bf, const VK_GROUP &k
 	  break; // LD: I think this break is good
 	}
       }
-      if(opt::all_variants && !is_good)
-	wcvs[v.first].insert(0);
     }
+    if(opt::all_variants && !is_good)
+      wcvs[v.first].insert(0);
   }
   return wcvs;
 }
