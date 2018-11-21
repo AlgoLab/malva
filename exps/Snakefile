@@ -1,5 +1,8 @@
 configfile: "config.yaml"
 
+#####
+# ! Correct sample rule use 8 threads
+#####
 import os
 
 ### Folders
@@ -19,15 +22,18 @@ big_bam = resources["big_bam"]
 # Output
 truth_sample = resources["truth_sample"]
 truth_fold = os.path.join(root_fold, truth_sample)
-res_foldname = folds["res"]
-res_fold = os.path.join(root_fold, res_foldname)
-kmc_foldname = folds["kmc"]
-malva_outfold = folds["malva_out"]
+res_fold = os.path.join(root_fold, folds["res"])
 
-# Tools
+# Tools name
+kmc = resources["kmc"]
+malva = resources["malva"]
+vargeno = resources["vargeno"]
+
+# Tools fold
 tools_fold = os.path.join(root_fold, folds["tools"])
-malva_fold = os.path.join(tools_fold, resources["malva"])
-
+malva_fold = os.path.join(tools_fold, malva)
+kmc_fold = os.path.join(malva_fold, kmc)
+vg_fold = os.path.join(tools_fold, vargeno)
 
 ### Data
 # Chromosomes
@@ -45,7 +51,6 @@ samples = []
 for sample in resources["samples"]:
     samples.append(sample)
 
-### Product
 # Small k
 ks = [23, 27, 31, 35, 39, 41]
 
@@ -71,7 +76,7 @@ rule run_extract_truth_from_vcf:
 
 rule run_kmc:
     input:
-        expand(os.path.join(res_fold, "{chrom}", kmc_foldname, "k{K}.{sample}.kmc_suf"),
+        expand(os.path.join(res_fold, "{chrom}", kmc, "k{K}.{sample}.kmc_suf"),
                chrom = chroms,
                K = Ks,
                sample = samples)
@@ -79,18 +84,25 @@ rule run_kmc:
 rule run_malva:
     input:
         # Malva (only true variants)
-        expand(os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.K{K}.{sample}.{vcf_type}.vcf"),
-               chrom = chroms,
-               sample = samples,
-               k = ks,
-               K = Ks,
-               vcf_type = vcf_types),
+        # expand(os.path.join(res_fold, "{chrom}", malva, "k{k}.K{K}.{sample}.{vcf_type}.vcf"),
+        #        chrom = chroms,
+        #        sample = samples,
+        #        k = ks,
+        #        K = Ks,
+        #        vcf_type = vcf_types),
         # Malva (all variants, -a option)
-        expand(os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.K{K}.{sample}.{vcf_type}.all.vcf"),
+        expand(os.path.join(res_fold, "{chrom}", malva, "k{k}.K{K}.{sample}.{vcf_type}.all.vcf"),
                chrom = chroms,
                sample = samples,
                k = ks,
                K = Ks,
+               vcf_type = vcf_types)
+
+rule run_vg:
+    input:
+        expand(os.path.join(res_fold, "{chrom}", vargeno, "{sample}.{vcf_type}.vcf"),
+               chrom = chroms,
+               sample = samples,
                vcf_type = vcf_types)
 
 # VCF rules
@@ -165,18 +177,18 @@ rule kmc:
     input:
         sample = os.path.join(samples_fold, "{chrom}.{sample}.fq.gz")
     output:
-        suf = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{k}.{sample}.kmc_suf")
+        suf = os.path.join(res_fold, "{chrom}", kmc, "k{k}.{sample}.kmc_suf")
     params:
-        out_prefix = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{k}.{sample}"),
-        tmp_fold = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{k}_{sample}_tmp"),
+        out_prefix = os.path.join(res_fold, "{chrom}", kmc, "k{k}.{sample}"),
+        tmp_fold = os.path.join(res_fold, "{chrom}", kmc, "k{k}_{sample}_tmp"),
         k = "{k}"
     log:
-        time = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{k}.{sample}.time"),
-        out = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{k}.{sample}.log")
+        time = os.path.join(res_fold, "{chrom}", kmc, "k{k}.{sample}.time"),
+        out = os.path.join(res_fold, "{chrom}", kmc, "k{k}.{sample}.log")
     shell:
         """
         mkdir -p {params.tmp_fold}
-        /usr/bin/time -v -o {log.time} {malva_fold}/KMC/bin/kmc -m3 -k{params.k} -t1 {input.sample} {params.out_prefix} {params.tmp_fold} &> {log.out}
+        /usr/bin/time -v -o {log.time} {kmc_fold}/bin/kmc -m3 -k{params.k} -t1 {input.sample} {params.out_prefix} {params.tmp_fold} &> {log.out}
         rm -r {params.tmp_fold}
         """
 
@@ -185,16 +197,16 @@ rule malva:
     input:
         ref = os.path.join(refs_fold, "{chrom}.fa"),
         vcf = os.path.join(vcfs_fold, "{chrom}.{vcf_type}.vcf.gz"),
-        suf = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{K}.{sample}.kmc_suf")
+        suf = os.path.join(res_fold, "{chrom}", kmc, "k{K}.{sample}.kmc_suf")
     output:
-        os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.K{K}.{sample}.{vcf_type}.vcf")
+        os.path.join(res_fold, "{chrom}", malva, "k{k}.K{K}.{sample}.{vcf_type}.vcf")
     params:
-        kmc_prefix = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{K}.{sample}"),
+        kmc_prefix = os.path.join(res_fold, "{chrom}", kmc, "k{K}.{sample}"),
         k = "{k}",
         K = "{K}"
     log:
-        time = os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.K{K}.{sample}.{vcf_type}.time"),
-        out = os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.K{K}.{sample}.{vcf_type}.log")
+        time = os.path.join(res_fold, "{chrom}", malva, "k{k}.K{K}.{sample}.{vcf_type}.time"),
+        out = os.path.join(res_fold, "{chrom}", malva, "k{k}.K{K}.{sample}.{vcf_type}.log")
     shell:
         """
         /usr/bin/time -v -o {log.time} {malva_fold}/malva -k {params.k} -r {params.K} -c 1 {input.ref} {input.vcf} {params.kmc_prefix} > {output} 2> {log.out}
@@ -204,17 +216,72 @@ rule malva_all_vars:
     input:
         ref = os.path.join(refs_fold, "{chrom}.fa"),
         vcf = os.path.join(vcfs_fold, "{chrom}.{vcf_type}.vcf.gz"),
-        suf = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{K}.{sample}.kmc_suf")
+        suf = os.path.join(res_fold, "{chrom}", kmc, "k{K}.{sample}.kmc_suf")
     output:
-        os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.K{K}.{sample}.{vcf_type}.all.vcf")
+        os.path.join(res_fold, "{chrom}", malva, "k{k}.K{K}.{sample}.{vcf_type}.all.vcf")
     params:
-        kmc_prefix = os.path.join(res_fold, "{chrom}", kmc_foldname, "k{K}.{sample}"),
+        # From output
+        kmc_prefix = os.path.join(res_fold, "{chrom}", kmc, "k{K}.{sample}"),
         k = "{k}",
         K = "{K}"
     log:
-        time = os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.K{K}.{sample}.{vcf_type}.all.time"),
-        out = os.path.join(res_fold, "{chrom}", malva_outfold, "k{k}.K{K}.{sample}.{vcf_type}.all.log")
+        time = os.path.join(res_fold, "{chrom}", malva, "k{k}.K{K}.{sample}.{vcf_type}.all.time"),
+        out = os.path.join(res_fold, "{chrom}", malva, "k{k}.K{K}.{sample}.{vcf_type}.all.log")
     shell:
         """
         /usr/bin/time -v -o {log.time} {malva_fold}/malva -a -k {params.k} -r {params.K} -c 1 {input.ref} {input.vcf} {params.kmc_prefix} > {output} 2> {log.out}
+        """
+
+# Vargeno rules
+rule prepare_vcf_for_vg:
+    input:
+        vcf = os.path.join(vcfs_fold, "{chrom}.{vcf_type}.vcf.gz")
+    output:
+        vcf = os.path.join(vcfs_fold, "{chrom}.{vcf_type}.no_samples.vcf")
+    shell:
+        """
+        zcat {input.vcf} | cut -f 1-8 | grep -v "##FORMAT=<ID=GT" > {output.vcf}
+        """
+
+rule prepare_sample_for_vg:
+    input:
+        sample = os.path.join(samples_fold, "{chrom}.{sample}.fq.gz")
+    output:
+        os.path.join(samples_fold, "{chrom}.{sample}.fq")
+    shell:
+        """
+        gunzip -k {input.sample}
+        """
+
+rule vg_index:
+    input:
+        ref = os.path.join(refs_fold, "{chrom}.fa"),
+        vcf = os.path.join(vcfs_fold, "{chrom}.{vcf_type}.no_samples.vcf")
+    output:
+        os.path.join(res_fold, "{chrom}", vargeno, "{sample}.{vcf_type}.index.chrlens")
+    params:
+        index_prefix = os.path.join(res_fold, "{chrom}", vargeno, "{sample}.{vcf_type}.index") # From output
+    log:
+        time = os.path.join(res_fold, "{chrom}", vargeno, "{sample}.{vcf_type}.index.time"),
+        out = os.path.join(res_fold, "{chrom}", vargeno, "{sample}.{vcf_type}.index.log")
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {vg_fold}/vargeno index {input.ref} {input.vcf} {params.index_prefix} &> {log.out}
+        """
+
+rule vg_geno:
+    input:
+        vcf = os.path.join(vcfs_fold, "{chrom}.{vcf_type}.no_samples.vcf"),
+        sample = os.path.join(samples_fold, "{chrom}.{sample}.fq"),
+        index = os.path.join(res_fold, "{chrom}", vargeno, "{sample}.{vcf_type}.index.chrlens")
+    output:
+        vcf = os.path.join(res_fold, "{chrom}", vargeno, "{sample}.{vcf_type}.vcf")
+    params:
+        index_prefix = os.path.join(res_fold, "{chrom}", vargeno, "{sample}.{vcf_type}.index") # From input
+    log:
+        time = os.path.join(res_fold, "{chrom}", vargeno, "{sample}.{vcf_type}.geno.time"),
+        out = os.path.join(res_fold, "{chrom}", vargeno, "{sample}.{vcf_type}.geno.log")
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {vg_fold}/vargeno geno {params.index_prefix} {input.sample} {input.vcf} {output.vcf} &> {log.out}
         """

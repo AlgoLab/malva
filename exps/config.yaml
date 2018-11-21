@@ -5,20 +5,21 @@ resources:
     refs : refs
     vcfs : vcfs
     samples : samples
-    kmc : KMC
     res : results
-    malva_out : malva
-  malva: malva
+  malva : malva
+  kmc : KMC
+  vargeno : vargeno
   big_bam : RMNISTHS_30xdownsample.bam
   truth_sample : NA12878
   chroms:
     - chr1
+    - chr8
     - chr17
-    # - chr14
+    - chr14
     - chr22
   samples:
     - original
-    - corrected
+    # - corrected
   vcf_types:
-    - full
+    # - full
     - EUR
