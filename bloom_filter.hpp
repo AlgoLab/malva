@@ -77,6 +77,7 @@ public:
   }
 
   bool increment(const char *kmer) {
+    // TODO: remove this function or make it consistent with the other one.
     if (!_mode)
       return false;
     uint64_t hash = _get_hash(kmer);
@@ -88,15 +89,20 @@ public:
     return true;
   }
 
-  bool increment(const char *kmer, const uint32 counter) {
+  bool increment_with_average(const char *kmer, const uint32 counter) {
     if (!_mode)
       return false;
     uint64_t hash = _get_hash(kmer);
     size_t bf_idx = hash % _size;
     if (_bf[bf_idx]) {
       size_t cnts_idx = _brank(bf_idx);
-      uint32 value = _counts[cnts_idx] + counter;
-      _counts[cnts_idx] = value < 250 ? value : 250;
+      uint32 old_value = _counts[cnts_idx];
+      uint32 new_value;
+      if(old_value == 0)
+        new_value = counter;
+      else
+        new_value = round((_counts[cnts_idx] + counter)/2);
+      _counts[cnts_idx] = new_value < 250 ? new_value : 250;
     }
     return true;
   }
