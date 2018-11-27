@@ -35,6 +35,10 @@ public:
     variants.push_back(v);
   }
 
+  Variant get_variant(const int &i) const {
+    return variants[i];
+  }
+
   bool empty() {
     return variants.empty();
   }
@@ -140,31 +144,22 @@ public:
     return kmers;
   }
 
-  void output_variants(std::map<int, std::set<int>> well_covered_variants) {
-    for (const auto &elem : well_covered_variants) {
-      int var_idx = elem.first;
-      std::cout << variants[var_idx].seq_name << '\t' << variants[var_idx].ref_pos + 1 << '\t'
-		<< number_variants_out++ << '\t' << variants[var_idx].ref_sub << '\t';
+  void output_variants(std::vector<GT> genotypes) {
+    for(uint i=0; i<variants.size(); ++i) {
+      Variant *v = &variants[i];
+      std::cout << v->seq_name << '\t' << v->ref_pos + 1 << '\t'
+                << v->idx << '\t' << v->ref_sub << '\t';
       uint varc = 0;
-      std::string gt;
-      /**
-       * TODO:
-       * - if we have more alt_id, we have to choose one
-       * - we have to print all the alternative alleles and set the
-       * correct index in the GT column
-       **/
-      for (const int &alt_id : elem.second) {
-        std::cout << variants[var_idx].get_allele(alt_id);
-        if(alt_id == 0) {
-          gt = "0/0:100";
-        } else {
-          gt = "1/0:100";
-        }
+      for(const std::string &alt : v->alts) {
+        std::cout << alt;
         ++varc;
-        if(varc != elem.second.size())
+        if(varc != v->alts.size())
           std::cout << ',';
       }
-      std::cout << "\t100\tPASS\tVT=SNP\tGT:GQ\t" << gt << "\n";
+      std::cout << "\t" << v->quality
+                << "\t" << v->filter
+                << "\t" << v->info
+                << "\tGT:GQ\t" << genotypes[i].first << ":" << (int)round(genotypes[i].second*100) << "\n";
     }
   }
 
