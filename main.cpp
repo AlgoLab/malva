@@ -100,8 +100,9 @@ float binomial(const int &x, const int &y) {
 }
 
 GT select_genotype(const Variant &v, const std::vector<int> covs, const float &error_rate) {
-  // TODO: check this if
   if(covs.size() == 1)
+    // The variant wasn't present in any sample: we have only the
+    // coverage of the reference allele
     return std::make_pair("0/0", 1);
 
   float max_prob = 0.0;
@@ -247,7 +248,10 @@ int main(int argc, char *argv[]) {
     bcf_unpack(vcf_record, BCF_UN_STR);
 
     Variant v (vcf_header, vcf_record, opt::pop);
-    if(!v.is_good)
+
+    // We do not consider variants with <CN> or not present in
+    // considered samples, i.e. is 0|0 for all samples
+    if(!v.has_alts or !v.is_present)
       continue;
 
     if(vb.empty()) {
@@ -350,7 +354,9 @@ int main(int argc, char *argv[]) {
     bcf_unpack(vcf_record, BCF_UN_STR);
 
     Variant v (vcf_header, vcf_record, opt::pop);
-    if(!v.is_good)
+    // In this step, we must consider the variants not present in the
+    // samples: their genotype is 0/0
+    if(!v.has_alts)
       continue;
 
     if(vb.empty()) {

@@ -22,7 +22,8 @@ struct Variant {
   int ref_size;                              // Len of reference base{s}
   int min_size;                              // Length of the shortest string (ref and alts)
   int max_size;                              // Length of the longest string (ref and alts)
-  bool is_good = true;                       // false if no alternatives, i.e. only <CN>
+  bool has_alts = true;                      // false if no alternatives, i.e. only <CN>
+  bool is_present = true;                    // false if no sample has this variant
   std::vector<int> positive_samples;         // indices of samples for which genotype is different from 00
   std::vector<float> frequencies;            // Allele frequency in each population
 
@@ -47,22 +48,23 @@ struct Variant {
     quality = vcf_record->qual;
     filter = "PASS"; // TODO: get filter string from VCF
     info = "."; // TODO: get info string from VCF
-    // Set sizes and is_good flag
+    // Set sizes and has_alts flag
     set_sizes();
-    if(is_good) {
+    if(has_alts) {
       // Populate frequencies vector
       extract_frequencies(vcf_header, vcf_record, pop);
-      // Populate genotypes, phasing, and positive_samples
-      extract_genotypes(vcf_header, vcf_record);
+      if(is_present)
+        // Populate genotypes, phasing, and positive_samples
+        extract_genotypes(vcf_header, vcf_record);
     }
   }
 
   /**
-   * Set the is_good flag and the min/max size of the variant
+   * Set the has_alts flag and the min/max size of the variant
    **/
   void set_sizes() {
     if(alts.size() == 0)
-      is_good = false;
+      has_alts = false;
     else {
       min_size = ref_size;
       max_size = ref_size;
@@ -89,6 +91,9 @@ struct Variant {
     }
     // Here we compute the frequency of the reference allele
     frequencies[0] = 1.0 - std::accumulate(frequencies.begin(), frequencies.end(), 0.0);
+
+    if(frequencies[0] == 1.0)
+      is_present = false;
   }
 
   void extract_genotypes(bcf_hdr_t *vcf_header, bcf1_t *vcf_record) {
@@ -102,7 +107,7 @@ struct Variant {
      ***/
     if(ngt_ret_value <= 0) {
       // std::cout << "The record doesn't contain GT information" << std::endl;
-      is_good = false;
+      has_alts = false;
       return;
     }
 

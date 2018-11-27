@@ -55,6 +55,11 @@ public:
 
       Variant *v = &variants[v_index];
 
+      if(!v->is_present) {
+        kmers[v_index] = _kmers;
+        continue;
+      }
+
       std::vector<std::vector<int>> right_combs = get_combs_on_the_right(v_index);
       std::vector<std::vector<int>> left_combs = get_combs_on_the_left(v_index);
 
@@ -221,6 +226,9 @@ private: // methods
     for(uint j=i+1; j<variants.size() && !halt_flag; ++j) {
       Variant *curr_v = &variants[j];
 
+      if(!curr_v->is_present)
+        continue;
+
       if(are_overlapping(mid_v, curr_v))
         continue;
 
@@ -301,6 +309,9 @@ private: // methods
     bool halt_flag = false;
     for(int j=i-1; j>=0 && !halt_flag; --j) {
       Variant *curr_v = &variants[j];
+
+      if(!curr_v->is_present)
+        continue;
 
       if(are_overlapping(curr_v, mid_v))
         continue;
