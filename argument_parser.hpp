@@ -6,41 +6,42 @@
 #include <getopt.h>
 
 static const char *USAGE_MESSAGE =
-  "Usage: malva [-a] [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MIN-COV] <reference.fa> <variants.vcf> <kmc_output_prefix>\n";
+    "Usage: malva [-a] [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MIN-COV] "
+    "<reference.fa> <variants.vcf> <kmc_output_prefix>\n";
 
 namespace opt {
-  static bool strict_mode = true;
-  static bool all_variants = false;
-  static uint k = 31;
-  static uint ref_k = 43;
-  static uint read_len = 150;
-  static float error_rate = 0.001;
-  static uint bf_size = ((uint)0b1 << 31);
-  static uint min_coverage = 30;
-  static std::string pop = "EUR";
-  // static uint max_coverage = 251;
-  // static size_t nThreads = 1;
-  static std::string fasta_path;
-  static std::string vcf_path;
-  static std::string kmc_sample_path;
-}
+static bool strict_mode = true;
+static bool all_variants = false;
+static uint k = 31;
+static uint ref_k = 43;
+static uint read_len = 150;
+static float error_rate = 0.001;
+static uint bf_size = ((uint)0b1 << 31);
+static uint min_coverage = 30;
+static std::string pop = "EUR";
+// static uint max_coverage = 251;
+// static size_t nThreads = 1;
+static std::string fasta_path;
+static std::string vcf_path;
+static std::string kmc_sample_path;
+} // namespace opt
 
 static const char *shortopts = "lak:r:b:c:e:n:p:h";
 
 static const struct option longopts[] = {
-  {"loose", no_argument, NULL, 'l'},
-  {"all-variant", no_argument, NULL, 'a'},
-  {"kmer-size", required_argument, NULL, 'k'},
-  {"ref-kmer", required_argument, NULL, 'r'},
-  {"bf-size", required_argument, NULL, 'b'},
-  {"min-coverage", required_argument, NULL, 'c'},
-  {"error-rate", required_argument, NULL, 'e'},
-  {"read-length", required_argument, NULL, 'n'},
-  {"population", required_argument, NULL, 'p'},
-  // {"max-coverage", required_argument, NULL, 'x'},
-  // {"threads", no_argument, NULL, 't'},
-  {"help", no_argument, NULL, 'h'},
-  {NULL, 0, NULL, 0}};
+    {"loose", no_argument, NULL, 'l'},
+    {"all-variant", no_argument, NULL, 'a'},
+    {"kmer-size", required_argument, NULL, 'k'},
+    {"ref-kmer", required_argument, NULL, 'r'},
+    {"bf-size", required_argument, NULL, 'b'},
+    {"min-coverage", required_argument, NULL, 'c'},
+    {"error-rate", required_argument, NULL, 'e'},
+    {"read-length", required_argument, NULL, 'n'},
+    {"population", required_argument, NULL, 'p'},
+    // {"max-coverage", required_argument, NULL, 'x'},
+    // {"threads", no_argument, NULL, 't'},
+    {"help", no_argument, NULL, 'h'},
+    {NULL, 0, NULL, 0}};
 
 void parse_arguments(int argc, char **argv) {
   bool die = false;

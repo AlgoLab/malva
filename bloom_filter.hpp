@@ -3,8 +3,8 @@
 
 #include <algorithm>
 #include <array>
-#include <sdsl/bit_vectors.hpp>
 #include <cstring>
+#include <sdsl/bit_vectors.hpp>
 
 #include "MurmurHash3.hpp"
 #include "kmc_api/kmc_file.h"
@@ -35,19 +35,18 @@ private:
 
   void _canonical(const char *kmer, char *ckmer, const int &k) const {
     strcpy(ckmer, kmer);
-    std::transform(ckmer, ckmer+k, ckmer, _compl);
-    std::reverse(ckmer, ckmer+k);
-    if(strcmp(kmer,ckmer) < 0)
+    std::transform(ckmer, ckmer + k, ckmer, _compl);
+    std::reverse(ckmer, ckmer + k);
+    if (strcmp(kmer, ckmer) < 0)
       strcpy(ckmer, kmer);
   }
 
   uint64_t _get_hash(const char *kmer) const {
     uint k = strlen(kmer);
-    char ckmer[k+1];
+    char ckmer[k + 1];
     _canonical(kmer, ckmer, k);
     array<uint64_t, 2> hashes;
-    MurmurHash3_x64_128(ckmer, k, 0,
-                        reinterpret_cast<void *>(&hashes));
+    MurmurHash3_x64_128(ckmer, k, 0, reinterpret_cast<void *>(&hashes));
     return hashes[0];
   }
 
@@ -98,10 +97,10 @@ public:
       size_t cnts_idx = _brank(bf_idx);
       uint32 old_value = _counts[cnts_idx];
       uint32 new_value;
-      if(old_value == 0)
+      if (old_value == 0)
         new_value = counter;
       else
-        new_value = round((_counts[cnts_idx] + counter)/2);
+        new_value = round((_counts[cnts_idx] + counter) / 2);
       _counts[cnts_idx] = new_value < 250 ? new_value : 250;
     }
     return true;

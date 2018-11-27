@@ -1,31 +1,32 @@
 #ifndef _VARIANT_HPP_
 #define _VARIANT_HPP_
 
-#include <string>
-#include <vector>
 #include <map>
 #include <numeric>
+#include <string>
+#include <vector>
 
-typedef std::pair<std::string,float> GT;
+typedef std::pair<std::string, float> GT;
 
 struct Variant {
   std::string seq_name;
-  int ref_pos;                               // Variant position 0-based
-  std::string idx;                           // ID
-  std::string ref_sub;                       // Reference base{s}
-  std::vector<std::string> alts;             // List of alternatives
-  float quality;                             // Quality field
-  std::string filter;                        // Filter field
-  std::string info;                          // Info field
-  std::vector<std::pair<int,int>> genotypes; // full list of genotypes
-  std::vector<bool> phasing;                 // true if genotype i-th is phased, false otherwise
-  int ref_size;                              // Len of reference base{s}
-  int min_size;                              // Length of the shortest string (ref and alts)
-  int max_size;                              // Length of the longest string (ref and alts)
-  bool has_alts = true;                      // false if no alternatives, i.e. only <CN>
-  bool is_present = true;                    // false if no sample has this variant
-  std::vector<int> positive_samples;         // indices of samples for which genotype is different from 00
-  std::vector<float> frequencies;            // Allele frequency in each population
+  int ref_pos;                                // Variant position 0-based
+  std::string idx;                            // ID
+  std::string ref_sub;                        // Reference base{s}
+  std::vector<std::string> alts;              // List of alternatives
+  float quality;                              // Quality field
+  std::string filter;                         // Filter field
+  std::string info;                           // Info field
+  std::vector<std::pair<int, int>> genotypes; // full list of genotypes
+  std::vector<bool> phasing; // true if genotype i-th is phased, false otherwise
+  int ref_size;              // Len of reference base{s}
+  int min_size;              // Length of the shortest string (ref and alts)
+  int max_size;              // Length of the longest string (ref and alts)
+  bool has_alts = true;      // false if no alternatives, i.e. only <CN>
+  bool is_present = true;    // false if no sample has this variant
+  std::vector<int> positive_samples; // indices of samples for which genotype is
+                                     // different from 00
+  std::vector<float> frequencies;    // Allele frequency in each population
 
   Variant() {}
 
@@ -40,20 +41,20 @@ struct Variant {
      * alternatives are <CN> but maybe there could be more cases...
      **/
     ref_size = (int)ref_sub.size();
-    for(int i = 1; i<vcf_record->n_allele; ++i) {
-      char* curr_alt = vcf_record->d.allele[i];
-      if(curr_alt[0] != '<')
+    for (int i = 1; i < vcf_record->n_allele; ++i) {
+      char *curr_alt = vcf_record->d.allele[i];
+      if (curr_alt[0] != '<')
         alts.push_back(std::string(curr_alt));
     }
     quality = vcf_record->qual;
     filter = "PASS"; // TODO: get filter string from VCF
-    info = "."; // TODO: get info string from VCF
+    info = ".";      // TODO: get info string from VCF
     // Set sizes and has_alts flag
     set_sizes();
-    if(has_alts) {
+    if (has_alts) {
       // Populate frequencies vector
       extract_frequencies(vcf_header, vcf_record, pop);
-      if(is_present)
+      if (is_present)
         // Populate genotypes, phasing, and positive_samples
         extract_genotypes(vcf_header, vcf_record);
     }
@@ -63,7 +64,7 @@ struct Variant {
    * Set the has_alts flag and the min/max size of the variant
    **/
   void set_sizes() {
-    if(alts.size() == 0)
+    if (alts.size() == 0)
       has_alts = false;
     else {
       min_size = ref_size;
@@ -77,22 +78,25 @@ struct Variant {
     }
   }
 
-  void extract_frequencies(bcf_hdr_t *vcf_header, bcf1_t *vcf_record, std::string pop) {
+  void extract_frequencies(bcf_hdr_t *vcf_header, bcf1_t *vcf_record,
+                           std::string pop) {
     int ndst = 0;
     float *altall_freqs = NULL;
     // !!! Here I'm assuming a VCF from the 1000genomes !!!
     std::string info_field = pop + "_AF";
-    bcf_get_info_float(vcf_header,vcf_record, info_field.c_str(), &altall_freqs, &ndst);
+    bcf_get_info_float(vcf_header, vcf_record, info_field.c_str(),
+                       &altall_freqs, &ndst);
 
-    frequencies.push_back(0); //First element is reserved for reference allele
-    for(uint i=0; i<alts.size(); ++i) {
+    frequencies.push_back(0); // First element is reserved for reference allele
+    for (uint i = 0; i < alts.size(); ++i) {
       float *freq = altall_freqs + i;
       frequencies.push_back(freq[0]);
     }
     // Here we compute the frequency of the reference allele
-    frequencies[0] = 1.0 - std::accumulate(frequencies.begin(), frequencies.end(), 0.0);
+    frequencies[0] =
+        1.0 - std::accumulate(frequencies.begin(), frequencies.end(), 0.0);
 
-    if(frequencies[0] == 1.0)
+    if (frequencies[0] == 1.0)
       is_present = false;
   }
 
@@ -100,26 +104,27 @@ struct Variant {
     // number of individuals from header
     int n_individuals = bcf_hdr_nsamples(vcf_header);
     int32_t *gt_arr = NULL, ngt = 0;
-    int ngt_ret_value = bcf_get_genotypes(vcf_header, vcf_record, &gt_arr, &ngt);
+    int ngt_ret_value =
+        bcf_get_genotypes(vcf_header, vcf_record, &gt_arr, &ngt);
     /***
      * If the record contains GT fields, ngt == ngt_ret_value == #GT.
      * Otherwise, ngt_ret_value is <= 0 that means an error occurred.
      ***/
-    if(ngt_ret_value <= 0) {
+    if (ngt_ret_value <= 0) {
       // std::cout << "The record doesn't contain GT information" << std::endl;
       has_alts = false;
       return;
     }
 
-    int ploidy = ngt/n_individuals;
-    for (int i=0; i<n_individuals; ++i) {
-      int32_t *curr_gt = gt_arr + i*ploidy;
+    int ploidy = ngt / n_individuals;
+    for (int i = 0; i < n_individuals; ++i) {
+      int32_t *curr_gt = gt_arr + i * ploidy;
       // Here, I'm assuming ploidy = 2. Otherwise, loop til ploidy
-      genotypes.push_back(std::make_pair(bcf_gt_allele(curr_gt[0]),
-                                         bcf_gt_allele(curr_gt[1])));
-      if(bcf_gt_allele(curr_gt[0]) > 0 or bcf_gt_allele(curr_gt[1]) > 0)
+      genotypes.push_back(
+          std::make_pair(bcf_gt_allele(curr_gt[0]), bcf_gt_allele(curr_gt[1])));
+      if (bcf_gt_allele(curr_gt[0]) > 0 or bcf_gt_allele(curr_gt[1]) > 0)
         positive_samples.push_back(i);
-      if(bcf_gt_is_phased(curr_gt[1]))
+      if (bcf_gt_is_phased(curr_gt[1]))
         // this works, but I'm not 100% sure it's sufficient
         phasing.push_back(true);
       else
@@ -132,19 +137,20 @@ struct Variant {
    * Return the i-th allele, 0 is the reference
    **/
   std::string get_allele(const int &i) const {
-    if(i==0)
+    if (i == 0)
       return ref_sub;
     else
-      return alts[i-1];
+      return alts[i - 1];
   }
 
   /**
-   * Given an allele, return its position in the list (1-based since 0 is the reference)
+   * Given an allele, return its position in the list (1-based since 0 is the
+   *reference)
    **/
   int get_allele_index(const std::string &a) const {
     int i = 1;
-    for(const std::string &all : alts) {
-      if(all.compare(a) == 0)
+    for (const std::string &all : alts) {
+      if (all.compare(a) == 0)
         return i;
       ++i;
     }
