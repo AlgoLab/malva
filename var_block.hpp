@@ -17,19 +17,17 @@ template <typename T> void extend(T &V1, const T &V2) {
 class VB {
 private: // attributes
   std::vector<Variant> variants;
-  const char *reference;
   int k;
   int number_variants_out = 0;
 
 public:
-  VB(const char *_reference, const int &_k) {
-    reference = _reference;
+  VB(const int &_k) {
     k = _k;
   }
   ~VB() {}
 
   bool is_near_to_last(const Variant &v) {
-    return are_near(&variants.back(), &v, k);
+    return are_near(variants.back(), v, k);
   }
 
   void add_variant(const Variant &v) { variants.push_back(v); }
@@ -40,9 +38,8 @@ public:
 
   void clear() { variants.clear(); }
 
-  VK_GROUP extract_kmers() {
+  VK_GROUP extract_kmers(const std::string &reference) {
     VK_GROUP kmers;
-
     for (uint v_index = 0; v_index < variants.size(); ++v_index) {
       std::map<int, std::vector<std::vector<std::string>>> _kmers;
 
@@ -61,7 +58,7 @@ public:
           combine_combs(left_combs, right_combs, v_index);
 
       for (const std::vector<int> &comb : combs) {
-        std::vector<std::string> ref_subs = get_ref_subs(comb);
+        std::vector<std::string> ref_subs = get_ref_subs(comb, reference);
         std::set<std::vector<std::string>> alt_allele_combs =
             build_alternative_alleles_combs(comb, v_index);
 
@@ -113,9 +110,9 @@ public:
             // extending/cutting on the left
             if (missing_prefix >= 0) {
               Variant *first_var_in_comb = &variants[comb.front()];
-              std::string prefix(reference + first_var_in_comb->ref_pos -
-                                     missing_prefix,
-                                 missing_prefix);
+              std::string prefix (reference,
+                                  first_var_in_comb->ref_pos - missing_prefix,
+                                  missing_prefix);
               kmer = prefix + kmer;
             } else
               kmer.erase(0, abs(missing_prefix));
@@ -123,9 +120,9 @@ public:
             // extending/cutting on the right
             if (missing_suffix >= 0) {
               Variant *last_var_in_comb = &variants[comb.back()];
-              std::string suffix(reference + last_var_in_comb->ref_pos +
-                                     last_var_in_comb->ref_size,
-                                 missing_suffix);
+              std::string suffix (reference,
+                                  last_var_in_comb->ref_pos + last_var_in_comb->ref_size,
+                                  missing_suffix);
               kmer += suffix;
             } else
               kmer.erase(kmer.size() - abs(missing_suffix),
@@ -151,7 +148,7 @@ public:
     return kmers;
   }
 
-  void output_variants(std::vector<GT> genotypes) {
+  void output_variants(const std::vector<GT> &genotypes) {
     for (uint i = 0; i < variants.size(); ++i) {
       Variant *v = &variants[i];
       std::cout << v->seq_name << '\t' << v->ref_pos + 1 << '\t' << v->idx
@@ -179,33 +176,33 @@ private: // methods
    * Return true if variant v1 overlaps with variant v2
    * i.e. they are incompatible
    **/
-  bool are_overlapping(const Variant *v1, const Variant *v2) const {
-    return (v1->ref_pos <= v2->ref_pos) &&
-           (v2->ref_pos < v1->ref_pos + v1->ref_size);
+  bool are_overlapping(const Variant &v1, const Variant &v2) const {
+    return (v1.ref_pos <= v2.ref_pos) &&
+           (v2.ref_pos < v1.ref_pos + v1.ref_size);
   }
 
   /**
    * Return true if variant v1 is k/2-near (on the right) to variant v2
    **/
-  bool are_near(const Variant *v1, const Variant *v2, const int &k,
+  bool are_near(const Variant &v1, const Variant &v2, const int &k,
                 const int &sum_to_add = 0) const {
-    return v1->ref_pos + v1->ref_size - v1->min_size - 1 + sum_to_add +
+    return v1.ref_pos + v1.ref_size - v1.min_size - 1 + sum_to_add +
                ceil((float)k / 2) >=
-           v2->ref_pos;
+           v2.ref_pos;
   }
 
   /**
    * Return true if variant v1 is gt-compatible with variant v2
    **/
-  bool are_gt_compatible(const Variant *v1, const Variant *v2) {
-    for (const uint i : v1->positive_samples) {
-      if (v1->phasing[i]) {
-        if ((v1->genotypes[i].first != 0 && v2->genotypes[i].first != 0) ||
-            (v1->genotypes[i].second != 0 && v2->genotypes[i].second != 0))
+  bool are_gt_compatible(const Variant &v1, const Variant &v2) {
+    for (const uint i : v1.positive_samples) {
+      if (v1.phasing[i]) {
+        if ((v1.genotypes[i].first != 0 && v2.genotypes[i].first != 0) ||
+            (v1.genotypes[i].second != 0 && v2.genotypes[i].second != 0))
           return true;
       } else {
-        if ((v1->genotypes[i].first != 0 || v1->genotypes[i].second != 0) &&
-            (v2->genotypes[i].first != 0 || v2->genotypes[i].second != 0))
+        if ((v1.genotypes[i].first != 0 || v1.genotypes[i].second != 0) &&
+            (v2.genotypes[i].first != 0 || v2.genotypes[i].second != 0))
           return true;
       }
     }
@@ -234,17 +231,17 @@ private: // methods
       if (!curr_v->is_present)
         continue;
 
-      if (are_overlapping(mid_v, curr_v))
+      if (are_overlapping(*mid_v, *curr_v))
         continue;
 
       if (right_combs.empty()) { // first var to be added
-        if (are_near(mid_v, curr_v, k) and are_gt_compatible(mid_v, curr_v)) {
+        if (are_near(*mid_v, *curr_v, k) and are_gt_compatible(*mid_v, *curr_v)) {
           std::vector<int> new_comb(1, (int)j);
           right_combs.push_back(new_comb);
           right_sums.push_back(curr_v->ref_size - curr_v->min_size);
         }
       } else {
-        if (are_gt_compatible(mid_v, curr_v)) {
+        if (are_gt_compatible(*mid_v, *curr_v)) {
           // add the var to all the compatible combinations
           bool added_flag = false;
           for (uint c = 0; c < right_combs.size(); ++c) {
@@ -253,9 +250,9 @@ private: // methods
 
             Variant *last_v_in_comb = &variants[comb.back()];
 
-            if (!are_overlapping(last_v_in_comb, curr_v)) {
+            if (!are_overlapping(*last_v_in_comb, *curr_v)) {
               added_flag = true;
-              if (are_near(mid_v, curr_v, k, sum)) {
+              if (are_near(*mid_v, *curr_v, k, sum)) {
                 right_combs[c].push_back(j);
                 right_sums[c] += curr_v->ref_size - curr_v->min_size;
               }
@@ -272,14 +269,14 @@ private: // methods
 
               Variant *last_v_in_comb = &variants[new_comb.back()];
 
-              while (are_overlapping(last_v_in_comb, curr_v) and
+              while (are_overlapping(*last_v_in_comb, *curr_v) and
                      !new_comb.empty()) {
                 new_comb.pop_back();
                 new_sum -= last_v_in_comb->ref_size - last_v_in_comb->min_size;
                 last_v_in_comb = &variants[new_comb.back()];
               }
               new_comb.push_back(j);
-              if (are_near(mid_v, curr_v, k, new_sum)) {
+              if (are_near(*mid_v, *curr_v, k, new_sum)) {
                 added_flag = true;
                 new_right_combs.push_back(new_comb);
                 new_right_sums.push_back(new_sum + curr_v->ref_size -
@@ -322,17 +319,17 @@ private: // methods
       if (!curr_v->is_present)
         continue;
 
-      if (are_overlapping(curr_v, mid_v))
+      if (are_overlapping(*curr_v, *mid_v))
         continue;
 
       if (left_combs.empty()) { // first var to be added
-        if (are_near(curr_v, mid_v, k) and are_gt_compatible(mid_v, curr_v)) {
+        if (are_near(*curr_v, *mid_v, k) and are_gt_compatible(*mid_v, *curr_v)) {
           std::vector<int> new_comb(1, (int)j);
           left_combs.push_back(new_comb);
           left_sums.push_back(curr_v->ref_size - curr_v->min_size);
         }
       } else {
-        if (are_gt_compatible(mid_v, curr_v)) {
+        if (are_gt_compatible(*mid_v, *curr_v)) {
           // add the var to all the compatible combinations
           bool added_flag = false;
           for (uint c = 0; c < left_combs.size(); ++c) {
@@ -341,9 +338,9 @@ private: // methods
 
             Variant *last_v_in_comb = &variants[comb.back()];
 
-            if (!are_overlapping(curr_v, last_v_in_comb)) {
+            if (!are_overlapping(*curr_v, *last_v_in_comb)) {
               added_flag = true;
-              if (are_near(curr_v, mid_v, k, sum)) {
+              if (are_near(*curr_v, *mid_v, k, sum)) {
                 left_combs[c].push_back(j);
                 left_sums[c] += curr_v->ref_size - curr_v->min_size;
               }
@@ -360,14 +357,14 @@ private: // methods
 
               Variant *last_v_in_comb = &variants[new_comb.back()];
 
-              while (are_overlapping(curr_v, last_v_in_comb) and
+              while (are_overlapping(*curr_v, *last_v_in_comb) and
                      !new_comb.empty()) {
                 new_comb.pop_back();
                 new_sum -= last_v_in_comb->ref_size - last_v_in_comb->min_size;
                 last_v_in_comb = &variants[new_comb.back()];
               }
               new_comb.push_back(j);
-              if (are_near(curr_v, mid_v, k, new_sum)) {
+              if (are_near(*curr_v, *mid_v, k, new_sum)) {
                 added_flag = true;
                 new_left_combs.push_back(new_comb);
                 new_left_sums.push_back(new_sum + curr_v->ref_size -
@@ -433,7 +430,7 @@ private: // methods
   /**
    * Return the reference substring between considered variants
    **/
-  std::vector<std::string> get_ref_subs(const std::vector<int> &comb) {
+  std::vector<std::string> get_ref_subs(const std::vector<int> &comb, const std::string &reference) {
     std::vector<std::string> ref_subs;
 
     int last_end = -1;
@@ -443,7 +440,9 @@ private: // methods
         last_end = v->ref_pos + v->ref_size;
         continue;
       }
-      std::string ref_sub(reference + last_end, v->ref_pos - last_end);
+      std::string ref_sub (reference,
+                           last_end,
+                           v->ref_pos - last_end);
       ref_subs.push_back(ref_sub);
       last_end = v->ref_pos + v->ref_size;
     }

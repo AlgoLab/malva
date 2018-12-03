@@ -30,7 +30,7 @@ struct Variant {
 
   Variant() {}
 
-  Variant(bcf_hdr_t *vcf_header, bcf1_t *vcf_record, std::string pop) {
+  Variant(bcf_hdr_t *vcf_header, bcf1_t *vcf_record, const std::string &pop) {
     seq_name = bcf_hdr_id2name(vcf_header, vcf_record->rid);
     ref_pos = vcf_record->pos;
     idx = vcf_record->d.id;
@@ -79,7 +79,7 @@ struct Variant {
   }
 
   void extract_frequencies(bcf_hdr_t *vcf_header, bcf1_t *vcf_record,
-                           std::string pop) {
+                           const std::string &pop) {
     int ndst = 0;
     float *altall_freqs = NULL;
     // !!! Here I'm assuming a VCF from the 1000genomes !!!

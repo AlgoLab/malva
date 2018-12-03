@@ -38,7 +38,7 @@ private:
     std::transform(ckmer, ckmer + k, ckmer, _compl);
     std::reverse(ckmer, ckmer + k);
     if (strcmp(kmer, ckmer) < 0)
-      strcpy(ckmer, kmer);
+      memmove(ckmer, kmer, k);
   }
 
   uint64_t _get_hash(const char *kmer) const {

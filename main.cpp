@@ -32,50 +32,6 @@ void pelapsed(const string &s = "") {
 
 KSEQ_INIT(gzFile, gzread)
 
-// Useless debug methods -----------------------------------------------------
-// !!! (maybe) Deprecated function !!!
-void check_kmers(const VK_GROUP &kmers) {
-  for (VK_GROUP::const_iterator it = kmers.begin(); it != kmers.end(); ++it) {
-    for (const auto &p : it->second) {
-      for (const auto &Ks : p.second) {
-        for (const auto &k : Ks) {
-          if (k.size() != opt::k)
-            std::cout << "#" << std::endl;
-        }
-      }
-    }
-  }
-}
-
-// !!! (maybe) Deprecated function !!!
-void print_kmers(const VK_GROUP &kmers) {
-  for (VK_GROUP::const_iterator it = kmers.begin(); it != kmers.end(); ++it) {
-    int vID = it->first;
-    std::cout << vID << std::endl;
-    for (const auto &p : it->second) {
-      int altID = p.first;
-      std::cout << " " << altID << ": ";
-      for (const auto &Ks : p.second) {
-        for (const auto &k : Ks)
-          std::cout << k << " ";
-      }
-      std::cout << std::endl;
-    }
-  }
-}
-
-int count_kmers(const VK_GROUP &kmers) {
-  int N = 0;
-  for (VK_GROUP::const_iterator it = kmers.begin(); it != kmers.end(); ++it) {
-    for (const auto &p : it->second) {
-      for (const auto &Ks : p.second)
-        N += Ks.size();
-    }
-  }
-  return N;
-}
-// ---------------------------------------------------------------------------
-
 /**
  * Method to add kmers to the bloom filter
  **/
@@ -95,12 +51,19 @@ void add_kmers_to_bf(BF &bf, const VK_GROUP &kmers) {
   }
 }
 
+/**
+ * Binomial coefficient is computed by using gamma function
+ **/
 float binomial(const int &x, const int &y) {
   return tgamma((float)x + 1.0) /
          (tgamma((float)y + 1.0) * tgamma((float)x - (float)y + 1.0));
 }
 
-GT select_genotype(const Variant &v, const std::vector<int> covs,
+/**
+ * Given a variant, the coverages of the alleles, and the error rate,
+ * select the best genotype.
+ **/
+GT select_genotype(const Variant &v, const std::vector<int> &covs,
                    const float &error_rate) {
   if (covs.size() == 1)
     // The variant wasn't present in any sample: we have only the
@@ -144,6 +107,11 @@ GT select_genotype(const Variant &v, const std::vector<int> covs,
   return std::make_pair(best_geno, max_prob);
 }
 
+/**
+ * Given a set of variants, return their genotypes. For each variant,
+ * it computes the coverage of each allele and then assign the best
+ * genotype.
+ **/
 std::vector<GT> genotype(BF &bf, const VB &vb, const VK_GROUP &kmers,
                          const int &cov, const float &error_rate) {
   std::vector<GT> genotypes;
@@ -233,6 +201,8 @@ void print_cleaned_header(bcf_hdr_t *vcf_header) {
   free(htxt.s);
 }
 
+// ---------------------------------------------------------------------------
+
 int main(int argc, char *argv[]) {
   hts_set_log_level(HTS_LOG_OFF);
 
@@ -241,7 +211,6 @@ int main(int argc, char *argv[]) {
   // STEP 0: open and check input files
   gzFile fasta_in = gzopen(opt::fasta_path.c_str(), "r");
   kseq_t *reference = kseq_init(fasta_in);
-  kseq_read(reference);
 
   htsFile *vcf = bcf_open(opt::vcf_path.c_str(), "r");
   bcf_hdr_t *vcf_header = bcf_hdr_read(vcf);
@@ -253,18 +222,38 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  // References are stored in a map
+  std::map<std::string, std::string> refs;
+  int l;
+  while ((l = kseq_read(reference)) >= 0) {
+    std::string id = reference->name.s;
+    if(id.compare(0,3,"chr") == 0) {
+      id = id.substr(3);
+    }
+    std::string seq (reference->seq.s);
+    refs[id] = seq;
+  }
+
   // STEP 1: add VCF kmers to bloom filter
   BF bf(opt::bf_size);
-  VB vb(reference->seq.s, opt::k);
-  int tot_vcf_kmers = 0;
+  BF ref_bf(opt::bf_size);
+
+  std::vector<std::string> used_seq_names;
+  VB vb(opt::k);
+  std::string last_seq_name = "";
 
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
     bcf_unpack(vcf_record, BCF_UN_STR);
-
     Variant v(vcf_header, vcf_record, opt::pop);
 
+    // In the first iteration, we set last_seq_name
+    if(last_seq_name.size() == 0) {
+      last_seq_name = v.seq_name;
+      used_seq_names.push_back(last_seq_name);
+    }
+
     // We do not consider variants with <CN> or not present in
-    // considered samples, i.e. is 0|0 for all samples
+    // considered samples, i.e. 0|0 for all samples
     if (!v.has_alts or !v.is_present)
       continue;
 
@@ -273,16 +262,19 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    if (!vb.is_near_to_last(v)) {
+    if (!vb.is_near_to_last(v) || last_seq_name != v.seq_name) {
       /***
        * 1. extract k-mers
        * 2. add k-mers to BF
        * 3. clear block
        ***/
-      VK_GROUP kmers = vb.extract_kmers();
-      tot_vcf_kmers += count_kmers(kmers);
+      VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
       add_kmers_to_bf(bf, kmers);
       vb.clear();
+      if(last_seq_name != v.seq_name) {
+        last_seq_name = v.seq_name;
+        used_seq_names.push_back(last_seq_name);
+      }
     }
     vb.add_variant(v);
   }
@@ -292,8 +284,7 @@ int main(int argc, char *argv[]) {
      * 2. add k-mers to BF
      * 3. clear block
      ***/
-    VK_GROUP kmers = vb.extract_kmers();
-    tot_vcf_kmers += count_kmers(kmers);
+    VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
     add_kmers_to_bf(bf, kmers);
     vb.clear();
   }
@@ -304,26 +295,28 @@ int main(int argc, char *argv[]) {
 
   bf.switch_mode();
 
-  pelapsed("BF creation complete (" + std::to_string(tot_vcf_kmers) + ")");
+  pelapsed("BF creation complete");
 
-  BF ref_bf(opt::bf_size);
   if (opt::strict_mode) {
-    std::string ref_ksub(reference->seq.s + (opt::ref_k - opt::k) / 2, opt::k);
-    std::string context(reference->seq.s, opt::ref_k);
-    transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
-    transform(context.begin(), context.end(), context.begin(), ::toupper);
-    if (bf.test_key(ref_ksub.c_str())) {
-      ref_bf.add_key(context.c_str());
-    }
-    for (uint p = opt::ref_k; p < reference->seq.l; ++p) {
-      char c1 = toupper(reference->seq.s[p]);
-      context.erase(0, 1);
-      context += c1;
-      char c2 = toupper(reference->seq.s[p - (opt::ref_k - opt::k) / 2]);
-      ref_ksub.erase(0, 1);
-      ref_ksub += c2;
-      if (bf.test_key(ref_ksub.c_str()))
+    for(const auto &seq_name : used_seq_names) {
+      std::string reference = refs[seq_name];
+      std::string ref_ksub(reference, (opt::ref_k - opt::k) / 2, opt::k);
+      std::string context(reference, 0, opt::ref_k);
+      transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
+      transform(context.begin(), context.end(), context.begin(), ::toupper);
+      if (bf.test_key(ref_ksub.c_str())) {
         ref_bf.add_key(context.c_str());
+      }
+      for (uint p = opt::ref_k; p < reference.size(); ++p) {
+        char c1 = toupper(reference[p]);
+        context.erase(0, 1);
+        context += c1;
+        char c2 = toupper(reference[p - (opt::ref_k - opt::k) / 2]);
+        ref_ksub.erase(0, 1);
+        ref_ksub += c2;
+        if (bf.test_key(ref_ksub.c_str()))
+          ref_bf.add_key(context.c_str());
+      }
     }
   }
 
@@ -351,9 +344,7 @@ int main(int argc, char *argv[]) {
   }
 
   uint32 kmer_cov = kmer_sum / tot_kmers;
-  uint32 cov =
-      (kmer_cov * opt::read_len) /
-      ((opt::read_len - opt::ref_k + 1) * (1 - opt::error_rate * opt::ref_k));
+  uint32 cov = (kmer_cov * opt::read_len) / ((opt::read_len - opt::ref_k + 1) * (1 - opt::error_rate * opt::ref_k));
   pelapsed("BF weights created");
 
   // STEP 3: check if variants in vcf are covered enough
@@ -367,10 +358,15 @@ int main(int argc, char *argv[]) {
   vcf_header = bcf_hdr_read(vcf);
   vcf_record = bcf_init();
 
+  last_seq_name = "";
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
     bcf_unpack(vcf_record, BCF_UN_STR);
-
     Variant v(vcf_header, vcf_record, opt::pop);
+
+    // In the first iteration, we set last_seq_name
+    if(last_seq_name.size() == 0)
+      last_seq_name = v.seq_name;
+
     // In this step, we must consider the variants not present in the
     // samples: their genotype is 0/0
     if (!v.has_alts)
@@ -381,17 +377,19 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    if (!vb.is_near_to_last(v)) {
+    if (!vb.is_near_to_last(v) || last_seq_name != v.seq_name) {
       /***
        * 1. extract k-mers
        * 2. check if variants are covered
        * 3. output covered variants
        * 4. clear block
        ***/
-      VK_GROUP kmers = vb.extract_kmers();
+      VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
       std::vector<GT> gts = genotype(bf, vb, kmers, cov, opt::error_rate);
       vb.output_variants(gts);
       vb.clear();
+      if(last_seq_name != v.seq_name)
+        last_seq_name = v.seq_name;
     }
     vb.add_variant(v);
   }
@@ -402,7 +400,7 @@ int main(int argc, char *argv[]) {
      * 3. output covered variants
      * 4. clear block
      ***/
-    VK_GROUP kmers = vb.extract_kmers();
+    VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
     std::vector<GT> gts = genotype(bf, vb, kmers, cov, opt::error_rate);
     vb.output_variants(gts);
     vb.clear();
