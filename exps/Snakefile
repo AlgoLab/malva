@@ -209,7 +209,7 @@ rule malva:
         out = os.path.join(res_fold, "{chrom}", malva, "k{k}.K{K}.{sample}.{vcf_type}.log")
     shell:
         """
-        /usr/bin/time -v -o {log.time} {malva_fold}/malva -k {params.k} -r {params.K} -c 1 {input.ref} {input.vcf} {params.kmc_prefix} > {output} 2> {log.out}
+        /usr/bin/time -v -o {log.time} {malva_fold}/malva -n 150 -e 0.001 -k {params.k} -r {params.K} -c 1 {input.ref} {input.vcf} {params.kmc_prefix} > {output} 2> {log.out}
         """
 
 rule malva_all_vars:
