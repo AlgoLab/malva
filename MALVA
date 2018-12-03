@@ -5,7 +5,7 @@ BIN_NAME="malva"
 EXECUTABLE="$(dirname $0)/${BIN_NAME}"
 KMC_BIN="$(dirname $0)/KMC/bin/kmc"
 DEFAULT_KSIZE=35
-DEFAULT_REF_KSIZE=43
+DEFAULT_REF_KSIZE=63
 DEFAULT_COVERAGE=1
 
 USAGE=$'\nUsage: '"${SCRIPT_NAME}"' [-k ksize] [-r Ksize] [-m min_coverage] <reference> <variants> <sample> <out_vcf>
@@ -16,11 +16,8 @@ Ideally this script will be depracated soon.
 
 Arguments:
      -h              print this help and exit
-     -a		     output all variants (also the one genotyped 0|0)
      -k              kmers length (default:'"${DEFAULT_KSIZE}"')
      -r              reference kmers length (default:'"${DEFAULT_REF_KSIZE}"')
-     -m              minimum coverage for filtering variants (default:'"${DEFAULT_COVERAGE}"')
-     -t              number of threads used by KMC (default: 1)
 
 Positional arguments:
      <reference>     reference file in FASTA/FASTQ format
@@ -29,32 +26,19 @@ Positional arguments:
      <out_vcf>       path to output VCF
 '
 
-#     -x              maximum coverage for filtering variants (default: unlimited)
-#     -u              maximum (even) number of neighbouring variants considered
-#                     for each signature (default: 4)
-#     -l              loose mode (default: false)
-
 reference=""
 vcf_file=""
 sample=""
 out_vcf=""
+
 k=${DEFAULT_KSIZE}
 refk=${DEFAULT_REF_KSIZE}
-min_coverage=${DEFAULT_COVERAGE}
 MAX_MEMORY=3
-threads_num=1
-all_flag=""
 
-while getopts "k:r:t:m:ha" flag; do
+while getopts "k:r:h" flag; do
     case "${flag}" in
-        t) threads_num=${OPTARG}
-	   ;;
-	a) all_flag="-a"
-	   ;;
         h) $(>&2 echo "${USAGE}")
            exit 1
-           ;;
-        m) min_coverage=${OPTARG}
            ;;
         k) k=${OPTARG}
            ;;
@@ -85,13 +69,13 @@ mkdir -p ${KMC_DEFAULT_DIR}
 if [ ! -f ${kmc_out_file}.kmc_pre ] && [ ! -f ${kmc_out_file}.kmc_suf ]
 then
     (>&2 echo  "[${SCRIPT_NAME}] Running KMC")
-    ${KMC_BIN} -m${MAX_MEMORY} -k${refk} -t${threads_num} -fm ${sample} ${kmc_out_file} ${KMC_DEFAULT_DIR} &> ${kmc_out_file}.log
+    ${KMC_BIN} -m${MAX_MEMORY} -k${refk} -t1 -fm ${sample} ${kmc_out_file} ${KMC_DEFAULT_DIR} &> ${kmc_out_file}.log
 else
     (>&2 echo  "[${SCRIPT_NAME}] Found KMC output")
 fi
 
 (>&2 echo "[${SCRIPT_NAME}] Running ${BIN_NAME}")
-${EXECUTABLE} ${all_flag} -k ${k} -r ${refk} -c ${min_coverage} ${reference} ${vcf_file} ${kmc_out_file} > ${out_vcf}
+${EXECUTABLE} -k ${k} -r ${refk} ${reference} ${vcf_file} ${kmc_out_file} > ${out_vcf}
 #-t ${threads_num}
 
 (>&2 echo "[${SCRIPT_NAME}] Cleaning up")
