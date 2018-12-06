@@ -118,9 +118,8 @@ std::vector<GT> genotype(BF &bf, const VB &vb, const VK_GROUP &kmers,
   for (const auto &var : kmers) {
     // For each variant
     Variant v = vb.get_variant(var.first);
-    std::vector<int> allele_covs(var.second.size() + 1,
-                                 0); //+1 for the reference allele
-    int i = 0;
+    std::vector<int> allele_covs(vb.get_variant(var.first).alts.size() + 1, 0); //+1 for the reference allele
+
     for (const auto &p : var.second) {
       // For each allele of the variant
       int all_cov = 0;
@@ -157,7 +156,7 @@ std::vector<GT> genotype(BF &bf, const VB &vb, const VK_GROUP &kmers,
         }
       }
       // we can now set the allele coverage
-      allele_covs[++i] = all_cov;
+      allele_covs[p.first] = all_cov;
     }
     // We now compute the coverage of the reference allele as
     // (expected_coverage - average_coverage_among_alt_alleles)
