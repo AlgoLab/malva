@@ -1,0 +1,486 @@
+configfile: "config.yaml"
+
+import os
+
+folds = config["resources"]["folds"]
+files = config["resources"]["files"]
+infos = config["resources"]["info"]
+
+### Additional parameters
+k = infos["k"]
+K = infos["K"]
+pop = infos["pop"]
+truth_sample = infos["truth_sample"]
+
+### Folds
+root_fold = folds["root"]
+
+# Input folds and files
+in_fold = os.path.join(root_fold, folds["in"])
+
+ref = os.path.join(in_fold, files["ref"])
+ref_prefix = ref[:-3]
+vcf = os.path.join(in_fold, files["vcf"])
+sample_name = files["sample_name"]
+sample_bam = os.path.join(in_fold, "{}.bam".format(sample_name))
+
+gatk_in_fold = os.path.join(in_fold, "gatk")
+gatk_snp_res = [os.path.join(gatk_in_fold, "dbsnp_138.hg19.vcf"),
+                os.path.join(gatk_in_fold, "dbsnp_138.hg19.vcf.idx"),
+                os.path.join(gatk_in_fold, "hapmap_3.3.hg19.sites.vcf"),
+                os.path.join(gatk_in_fold, "hapmap_3.3.hg19.sites.vcf.idx"),
+                os.path.join(gatk_in_fold, "1000G_omni2.5.hg19.sites.vcf"),
+                os.path.join(gatk_in_fold, "1000G_omni2.5.hg19.sites.vcf.idx"),
+                os.path.join(gatk_in_fold, "1000G_phase1.snps.high_confidence.hg19.sites.vcf"),
+                os.path.join(gatk_in_fold, "1000G_phase1.snps.high_confidence.hg19.sites.vcf.idx")]
+gatk_indels_res = [os.path.join(gatk_in_fold, "Mills_and_1000G_gold_standard.indels.hg19.sites.vcf"),
+                   os.path.join(gatk_in_fold, "Mills_and_1000G_gold_standard.indels.hg19.sites.vcf.idx")]
+
+# Mid fold and files
+mid_fold = os.path.join(root_fold, folds["mid"])
+
+vcf_for_vg = os.path.join(mid_fold, files["vcf_for_vargeno"])
+truth_vcf = os.path.join(mid_fold, "{}.vcf".format(truth_sample))
+sample = os.path.join(mid_fold, "{}.fq".format(sample_name))
+
+# Output folds and files
+out_fold = os.path.join(root_fold, folds["out"])
+
+kmc_out_prefix = os.path.join(out_fold, "malva", "KMC.{}.K{}".format(sample_name, K))
+malva_out_prefix = os.path.join(out_fold, "malva", "malva.{}.k{}.K{}".format(sample_name, k, K))
+vargeno_out_prefix = os.path.join(out_fold, "vargeno", "vargeno.{}".format(sample_name))
+bwa_out_prefix = os.path.join(out_fold, "bwa", "bwa.{}".format(sample_name))
+samtools_out_prefix = os.path.join(out_fold, "samtools", "samtools.{}".format(sample_name))
+gatk_out_prefix = os.path.join(out_fold, "gatk", "gatk.{}".format(sample_name))
+
+# Tools fold
+tools_fold = os.path.join(root_fold, folds["tools"])
+malva_fold = os.path.join(tools_fold, "malva")
+vg_fold = os.path.join(tools_fold, "vargeno")
+gatk_fold = os.path.join(tools_fold, "gatk")
+
+### Rules
+'''
+This rule prepare the input for the next steps - It populates mid folder with:
+ - vcf for vargeno, ie without samples and format field in the header
+ - sample (extracted from BAM)
+ - vcf of NA12878 extracted from vcf
+'''
+rule setup_input:
+    input:
+        vcf_for_vg,
+        truth_vcf,
+        sample
+
+rule extract_truth:
+    input:
+        vcf = vcf
+    output:
+        truth = truth_vcf
+    shell:
+        """
+        bcftools view -s {truth_sample} {input.vcf} | bgzip -c > {output.truth}
+        tabix -p vcf {output.truth}
+        """
+
+rule extract_sample:
+    input:
+        bam = sample_bam
+    output:
+        sample = sample
+    shell:
+        """
+        samtools fastq {input.bam} > {output.sample}
+        """
+
+rule prepare_vcf_for_vg:
+    input:
+        vcf = vcf
+    output:
+        vcf = vcf_for_vg
+    shell:
+        """
+        cut -f 1-8 {input.vcf} | grep -v "##FORMAT=<ID=GT" > {output.vcf}
+        """
+
+# MALVA rules
+rule malva:
+    input:
+        ref = ref,
+        vcf = vcf,
+        suf = kmc_out_prefix + ".kmc_suf"
+    output:
+        vcf = malva_out_prefix + ".vcf"
+    log:
+        time = malva_out_prefix + ".time",
+        out = malva_out_prefix + ".log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {malva_fold}/malva -n 150 -e 0.001 -k {k} -r {K} {input.ref} {input.vcf} {kmc_out_prefix} > {output.vcf} 2> {log.out}
+        """
+
+rule kmc:
+    input:
+        sample = sample
+    output:
+        suf = kmc_out_prefix + ".kmc_suf"
+    params:
+        tmp_fold = kmc_out_prefix + "_tmp"
+    log:
+        time = kmc_out_prefix + ".time",
+        out = kmc_out_prefix + ".log"
+    shell:
+        """
+        mkdir -p {params.tmp_fold}
+        /usr/bin/time -v -o {log.time} {malva_fold}/KMC/bin/kmc -m3 -t4 -k{K} {input.sample} {kmc_out_prefix} {params.tmp_fold} &> {log.out}
+        rm -r {params.tmp_fold}
+        """
+
+# Vargeno rules
+rule vargeno:
+    input:
+        vargeno_out_prefix + ".vcf"
+
+rule vg_index:
+    input:
+        ref = ref,
+        vcf = vcf_for_vg
+    output:
+        index = vargeno_out_prefix + ".index" + ".chrlens"
+    params:
+        index_prefix = vargeno_out_prefix + ".index"
+    log:
+        time = vargeno_out_prefix + ".index.time",
+        out = vargeno_out_prefix + ".index.log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {vg_fold}/vargeno index {input.ref} {input.vcf} {params.index_prefix} &> {log.out}
+        """
+
+rule vg_geno:
+    input:
+        vcf = vcf_for_vg,
+        sample = sample,
+        index = vargeno_out_prefix + ".index" + ".chrlens"
+    output:
+        vcf = vargeno_out_prefix + ".vcf"
+    params:
+        index_prefix = vargeno_out_prefix + ".index"
+    log:
+        time = vargeno_out_prefix + ".geno.time",
+        out = vargeno_out_prefix + ".geno.log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {vg_fold}/vargeno geno {params.index_prefix} {input.sample} {input.vcf} {output.vcf} &> {log.out}
+        """
+
+# samtools rules
+rule samtools:
+    input:
+        samtools_out_prefix + ".bcf"
+
+rule bwa_index:
+    input:
+        ref = ref
+    output:
+        index = ref + ".bwt"
+    log:
+        time = bwa_out_prefix + ".index.time",
+        out = bwa_out_prefix + ".index.log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} bwa index {input.ref} &> {log.out}
+        """
+
+rule bwa_mem:
+    input:
+        ref = ref,
+        index = ref + ".bwt",
+        sample = sample
+    output:
+        bam = bwa_out_prefix + ".bam"
+    params:
+        sam = bwa_out_prefix + ".sam"
+    log:
+        time = bwa_out_prefix + ".align.time",
+        out = bwa_out_prefix + ".align.log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} bwa mem -t 4 -R '@RG\\tID:group1\\tSM:NA12878\\tPL:illumina\\tLB:lib1\\tPU:unit1' {input.ref} {input.sample} > {params.sam} 2> {log.out}
+        /usr/bin/time -v --append -o {log.time} bash -c "samtools view -bS -@ 3 {params.sam} | samtools sort -@ 3 -" > {output.bam} 2>> {log.out}
+        /usr/bin/time -v --append -o {log.time} samtools index -@ 4 {output.bam} 2>> {log.out}
+        rm -f {params.sam}
+        """
+
+rule mpileup_and_call:
+    input:
+        ref = ref,
+        bam = bwa_out_prefix + ".bam"
+    output:
+        bcf = samtools_out_prefix + ".bcf"
+    log:
+        time = samtools_out_prefix + ".mpileup.time",
+        out = samtools_out_prefix + ".mpileup.log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} bash -c "bcftools mpileup -Ou -f {input.ref} {input.bam} | bcftools call -mv -Ob -o {output.bcf}" 2> {log.out}
+        """
+
+# GATK best-practices rule
+# --java-options "-XX:ConcGCThreads=2"
+rule gatk:
+    input:
+        gatk_out_prefix + ".vcf"
+        
+rule gatk_index_ref:
+    input:
+        ref = ref
+    output:
+        ref_dict = ref_prefix + ".dict",
+        ref_index = ref + ".fai"
+    log:
+        out = gatk_out_prefix + ".index_ref.log"
+    shell:
+        """
+        {gatk_fold}/gatk CreateSequenceDictionary -R {input.ref} -O {output.ref_dict} &> {log.out}
+        samtools faidx {input.ref} &>> {log.out}
+        """
+
+rule gatk_mark_dup:
+    input:
+        bam = bwa_out_prefix + ".bam"
+    output:
+        dedup_bam = gatk_out_prefix + ".dedup_reads.bam",
+        metrics = gatk_out_prefix + ".dedup_reads.metrics"
+    log:
+        time = gatk_out_prefix + ".mark_dup.time",
+        out = gatk_out_prefix + ".mark_dup.log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {gatk_fold}/gatk MarkDuplicates \
+                                                        -I {input.bam} \
+                                                        -O {output.dedup_bam} \
+                                                        -M {output.metrics} \
+                                                        -ASO coordinate &> {log.out}
+        """
+
+rule gatk_index_vcf:
+    input:
+        vcf = vcf
+    output:
+        indexed_vcf = vcf + ".idx"
+    log:
+        time = gatk_out_prefix + ".index_vcf.time",
+        out = gatk_out_prefix + ".index_vcf.log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {gatk_fold}/gatk IndexFeatureFile -F {input.vcf} &> {log.out}
+        """
+
+rule gatk_base_recalib:
+    input:
+        ref = ref,
+        ref_dict = ref_prefix + ".dict",
+        ref_index = ref + ".fai",
+        vcf = vcf,
+        indexed_vcf = vcf + ".idx",
+        dedup_bam = gatk_out_prefix + ".dedup_reads.bam"
+    output:
+        recal_data = gatk_out_prefix + ".recal_data.grp"
+    log:
+        time = gatk_out_prefix + ".base_recalib.time",
+        out = gatk_out_prefix + ".base_recalib.log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {gatk_fold}/gatk BaseRecalibrator \
+                                                        -R {input.ref} \
+                                                        -I  {input.dedup_bam} \
+                                                        --known-sites {input.vcf} \
+                                                        -O {output.recal_data} &> {log.out}
+        """
+
+rule gatk_apply_bqsr:
+    input:
+        ref = ref,
+        vcf = vcf,
+        dedup_bam = gatk_out_prefix + ".dedup_reads.bam",
+        recal_data = gatk_out_prefix + ".recal_data.grp"
+    output:
+        recal_bam = gatk_out_prefix + ".recal_reads.bam"
+    log:
+        time = gatk_out_prefix + ".apply_bqsr.time",
+        out = gatk_out_prefix + ".apply_bqsr.log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {gatk_fold}/gatk ApplyBQSR \
+                                                        -R {input.ref} \
+                                                        -I {input.dedup_bam} \
+                                                        --bqsr-recal-file {input.recal_data} \
+                                                        -O {output.recal_bam} &> {log.out}
+        """
+
+rule gatk_hc:
+    input:
+        ref = ref,
+        recal_bam = gatk_out_prefix + ".recal_reads.bam"
+    output:
+        raw_vcf = gatk_out_prefix + ".raw.vcf"
+    log:
+        time = gatk_out_prefix + ".hc.time",
+        out = gatk_out_prefix + ".hc.log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {gatk_fold}/gatk HaplotypeCaller \
+                                                       -R {input.ref} \
+                                                       -I {input.recal_bam} \
+                                                       -O {output.raw_vcf} \
+                                                       --genotyping-mode DISCOVERY \
+                                                       --output-mode EMIT_VARIANTS_ONLY &> {log.out}
+        """
+
+rule index_snp_res:
+    input:
+        dbsnp = gatk_snp_res[0],
+        hapmap = gatk_snp_res[2],
+        omni = gatk_snp_res[4],
+        onekgen = gatk_snp_res[6]
+    output:
+        dbsnp_idx = gatk_snp_res[1],
+        hapmap_idx = gatk_snp_res[3],
+        omni_idx = gatk_snp_res[5],
+        onekgen_idx = gatk_snp_res[7]
+    log:
+        out = gatk_out_prefix + ".index_snp_res.log"
+    shell:
+        """
+        {gatk_fold}/gatk IndexFeatureFile -F {input.dbsnp} &> {log.out}
+        {gatk_fold}/gatk IndexFeatureFile -F {input.hapmap} &>> {log.out}
+        {gatk_fold}/gatk IndexFeatureFile -F {input.omni} &>> {log.out}
+        {gatk_fold}/gatk IndexFeatureFile -F {input.onekgen} &>> {log.out}
+        """
+        
+rule gatk_snp_recal:
+    input:
+        ref = ref,
+        raw_vcf = gatk_out_prefix + ".raw.vcf",
+        dbsnp = gatk_snp_res[0],
+        dbsnp_idx = gatk_snp_res[1],
+        hapmap = gatk_snp_res[2],
+        hapmap_idx = gatk_snp_res[3],
+        omni = gatk_snp_res[4],
+        omni_idx = gatk_snp_res[5],
+        onekgen = gatk_snp_res[6],
+        onekgen_idx = gatk_snp_res[7]
+    output:
+        snp_tranches = gatk_out_prefix + ".recalibrate_SNP.tranches",
+        snp_recal = gatk_out_prefix + ".recalibrate_SNP.recal"
+    log:
+        time = gatk_out_prefix + ".snp_recal.time",
+        out = gatk_out_prefix + ".snp_recal.log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {gatk_fold}/gatk VariantRecalibrator \
+                                                        -R {input.ref} \
+                                                        -V {input.raw_vcf} \
+                                                        -resource hapmap,known=false,training=true,truth=true,prior=15.0:{input.hapmap} \
+                                                        -resource omni,known=false,training=true,truth=true,prior=12.0:{input.omni} \
+                                                        -resource 1000G,known=false,training=true,truth=false,prior=10.0:{input.onekgen} \
+                                                        -resource dbsnp,known=true,training=false,truth=false,prior=2.0:{input.dbsnp} \
+                                                        --tranches-file {output.snp_tranches} \
+                                                        -O {output.snp_recal} \
+                                                        -an DP \
+                                                        -an QD \
+                                                        -an FS \
+                                                        -an SOR \
+                                                        -an MQRankSum \
+                                                        -an ReadPosRankSum \
+                                                        -mode SNP \
+                                                        -tranche 100.0 -tranche 99.9 -tranche 99.0 -tranche 90.0 \
+                                                        --max-gaussians 8 \
+                                                        --minimum-bad-variants 1000 &> {log.out}
+        """
+
+rule gatk_snp_vqsr:
+    input:
+        raw_vcf = gatk_out_prefix + ".raw.vcf",
+        snp_tranches = gatk_out_prefix + ".recalibrate_SNP.tranches",
+        snp_recal = gatk_out_prefix + ".recalibrate_SNP.recal"
+    output:
+        vcf_rawindels = gatk_out_prefix + ".recalibrated_snps_raw_indels.vcf"
+    log:
+        time = gatk_out_prefix + ".snp_vqsr.time",
+        out = gatk_out_prefix + ".snp_vqsr.log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {gatk_fold}/gatk ApplyVQSR \
+                                                        -V {input.raw_vcf} \
+                                                        --recal-file {input.snp_recal}  \
+                                                        --tranches-file {input.snp_tranches} \
+                                                        -mode SNP \
+                                                        -ts-filter-level 99.0 \
+                                                        -O {output.vcf_rawindels} &> {log.out}
+        """
+
+rule index_indel_res:
+    input:
+        mills = gatk_indels_res[0]
+    output:
+        mills_idx = gatk_indels_res[1]
+    log:
+        out = gatk_out_prefix + ".index_indel_res.log"
+    shell:
+        """
+        {gatk_fold}/gatk IndexFeatureFile -F {input.mills} &> {log.out}
+        """
+
+rule gatk_indel_recal:
+    input:
+        ref = ref,
+        vcf_rawindels = gatk_out_prefix + ".recalibrated_snps_raw_indels.vcf",
+        mills = gatk_indels_res[0],
+        mills_idx = gatk_indels_res[1]
+    output:
+        indel_tranches = gatk_out_prefix + ".recalibrate_INDEL.tranches",
+        indel_recal = gatk_out_prefix + ".recalibrate_INDEL.recal"
+    log:
+        time = gatk_out_prefix + ".indel_recal.time",
+        out = gatk_out_prefix + ".indel_recal.log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {gatk_fold}/gatk VariantRecalibrator \
+                                                        -R {input.ref} \
+                                                        -V {input.vcf_rawindels} \
+                                                        --resource mills,known=false,training=true,truth=true,prior=12.0:{input.mills}  \
+                                                        --tranches-file {output.indel_tranches} \
+                                                        -O {output.indel_recal} \
+                                                        -an DP \
+                                                        -an QD \
+                                                        -an FS \
+                                                        -an SOR \
+                                                        -an MQRankSum \
+                                                        -an ReadPosRankSum \
+                                                        -mode INDEL \
+                                                        -tranche 100.0 -tranche 99.9 -tranche 99.0 -tranche 90.0 \
+                                                        --max-gaussians 4 &> {log.out}
+        """
+
+rule gatk_indel_vqsr:
+    input:
+        vcf_rawindels = gatk_out_prefix + ".recalibrated_snps_raw_indels.vcf",
+        indel_tranches = gatk_out_prefix + ".recalibrate_INDEL.tranches",
+        indel_recal = gatk_out_prefix + ".recalibrate_INDEL.recal"
+    output:
+        vcf = gatk_out_prefix + ".vcf"
+    log:
+        time = gatk_out_prefix + ".indel_vqsr.time",
+        out = gatk_out_prefix + ".indel_vqsr.log"
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {gatk_fold}/gatk ApplyVQSR \
+                                                        -V {input.vcf_rawindels} \
+                                                        --recal-file {input.indel_recal}  \
+                                                        --tranches-file {input.indel_tranches} \
+                                                        -mode INDEL \
+                                                        -ts-filter-level 99.0 \
+                                                        -O {output.vcf} &> {log.out}
+        """
