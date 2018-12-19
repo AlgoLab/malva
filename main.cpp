@@ -4,7 +4,7 @@
 #include <iostream>
 #include <utility>
 
-#include <map>
+#include <unordered_map>
 #include <set>
 #include <string>
 #include <vector>
@@ -20,6 +20,7 @@
 #include "argument_parser.hpp"
 #include "bloom_filter.hpp"
 #include "var_block.hpp"
+#include "kmap.hpp"
 
 auto start_t = chrono::high_resolution_clock::now();
 
@@ -35,7 +36,7 @@ KSEQ_INIT(gzFile, gzread)
 /**
  * Method to add kmers to the bloom filter
  **/
-void add_kmers_to_bf(BF &bf, const VK_GROUP &kmers) {
+void add_kmers_to_bf(BF &bf, KMAP &ref_bf, const VK_GROUP &kmers) {
   for (const auto &v : kmers) {
     // For each variant
     for (const auto &p : v.second) {
@@ -44,7 +45,10 @@ void add_kmers_to_bf(BF &bf, const VK_GROUP &kmers) {
         // For each list of kmers of the allele
         for (const auto &kmer : Ks) {
           // For each kmer in the kmer list
-          bf.add_key(kmer.c_str());
+          if(p.first == 0)
+            ref_bf.add_key(kmer.c_str());
+          else
+            bf.add_key(kmer.c_str());
         }
       }
     }
@@ -52,78 +56,14 @@ void add_kmers_to_bf(BF &bf, const VK_GROUP &kmers) {
 }
 
 /**
- * Binomial coefficient is computed by using gamma function
+ * Method to compute and store the coverages of the variants of a
+ * var_block. It uses the coverages stored in the bloom filters/map.
+ * ! We have to clean this method.
  **/
-float binomial(const int &x, const int &y) {
-  return tgamma((float)x + 1.0) /
-         (tgamma((float)y + 1.0) * tgamma((float)x - (float)y + 1.0));
-}
-
-/**
- * Given a variant, the coverages of the alleles, and the error rate,
- * select the best genotype.
- **/
-GT select_genotype(const Variant &v, const std::vector<int> &covs,
-                   const float &error_rate) {
-  if (covs.size() == 1)
-    // The variant wasn't present in any sample: we have only the
-    // coverage of the reference allele
-    return std::make_pair("0/0", 1);
-
-  float max_prob = 0.0;
-  std::string best_geno = "0/0";
-
-  for (uint g = 0; g < v.frequencies.size(); ++g) {
-    if (v.frequencies[g] == 1.0)
-      return std::make_pair(to_string(g) + "/" + to_string(g), 1);
-  }
-
-  for (uint g1 = 0; g1 < covs.size(); ++g1) {
-    for (uint g2 = g1; g2 < covs.size(); ++g2) {
-      float prior;
-      float posterior;
-      int total_sum = accumulate(covs.begin(), covs.end(), 0);
-      if (g1 == g2) {
-        prior = std::pow(v.frequencies[g1], 2);
-        int truth = covs[g1];
-        int error = total_sum - truth;
-
-        posterior = binomial(truth + error, truth) *
-                    pow(1 - error_rate, truth) * pow(error_rate, error);
-      } else {
-        prior = 2 * v.frequencies[g1] * v.frequencies[g2];
-        int truth1 = covs[g1];
-        int truth2 = covs[g2];
-        int error = total_sum - truth1 - truth2;
-        posterior = binomial(truth1 + truth2 + error, truth1 + truth2) *
-                    binomial(truth1 + truth2, truth1) *
-                    pow((1 - error_rate) / 2, truth1) *
-                    pow((1 - error_rate) / 2, truth2) * pow(error_rate, error);
-      }
-
-      float prob = prior * posterior;
-      if (prob > max_prob) {
-        max_prob = prob;
-        best_geno = to_string(g1) + "/" + to_string(g2);
-      }
-    }
-  }
-  return std::make_pair(best_geno, max_prob);
-}
-
-/**
- * Given a set of variants, return their genotypes. For each variant,
- * it computes the coverage of each allele and then assign the best
- * genotype.
- **/
-std::vector<GT> genotype(BF &bf, const VB &vb, const VK_GROUP &kmers,
-                         const int &cov, const float &error_rate) {
-  std::vector<GT> genotypes;
+void set_coverages(BF &bf, KMAP &ref_bf, VB &vb, const VK_GROUP &kmers) {
   for (const auto &var : kmers) {
     // For each variant
     Variant v = vb.get_variant(var.first);
-    std::vector<int> allele_covs(vb.get_variant(var.first).alts.size() + 1, 0); //+1 for the reference allele
-
     for (const auto &p : var.second) {
       // For each allele of the variant
       int all_cov = 0;
@@ -137,7 +77,11 @@ std::vector<GT> genotype(BF &bf, const VB &vb, const VK_GROUP &kmers,
          * coverages
          **/
         if (Ks.size() == 1) {
-          uint w = bf.get_count(Ks[0].c_str());
+          uint w = 0;
+          if(p.first == 0)
+            w = ref_bf.get_count(Ks[0].c_str());
+          else
+            w = bf.get_count(Ks[0].c_str());
           if (w != 0) {
             // If we have only a single kmer, only if it is covered,
             // we can use its coverage. Otherwise, we do not consider
@@ -148,10 +92,13 @@ std::vector<GT> genotype(BF &bf, const VB &vb, const VK_GROUP &kmers,
               all_cov = round(all_cov + w) / 2;
           }
         } else {
-          // We have more kmers: we iterate to compute the average
-          // coverage
+          // We have more kmers: we iterate to compute the average coverage
           for (const auto &kmer : Ks) {
-            uint w = bf.get_count(kmer.c_str());
+            uint w = 0;
+            if(p.first == 0)
+              w = ref_bf.get_count(kmer.c_str());
+            else
+              w = bf.get_count(kmer.c_str());
             if (all_cov == 0)
               all_cov = w;
             else
@@ -160,23 +107,9 @@ std::vector<GT> genotype(BF &bf, const VB &vb, const VK_GROUP &kmers,
         }
       }
       // we can now set the allele coverage
-      allele_covs[p.first] = all_cov;
+      vb.set_variant_coverage(var.first, p.first, all_cov);
     }
-    // We now compute the coverage of the reference allele as
-    // (expected_coverage - average_coverage_among_alt_alleles)
-    // We need the -1 here because the first element of the vector is
-    // 0, reserved for reference allele
-    float average_cov_alts = 0;
-    if (allele_covs.size() > 1)
-      average_cov_alts =
-          accumulate(allele_covs.begin(), allele_covs.end(), 0.0) /
-          (allele_covs.size() - 1);
-    allele_covs[0] = std::max((float)0.0, cov - average_cov_alts);
-
-    GT gt = select_genotype(v, allele_covs, error_rate);
-    genotypes.push_back(gt);
   }
-  return genotypes;
 }
 
 /**
@@ -186,10 +119,10 @@ std::vector<GT> genotype(BF &bf, const VB &vb, const VK_GROUP &kmers,
 void print_cleaned_header(bcf_hdr_t *vcf_header) {
   // Adding format - if already present, they won't be added
   bcf_hdr_append(
-      vcf_header,
-      "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
+                 vcf_header,
+                 "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
   bcf_hdr_append(vcf_header, "##FORMAT=<ID=GQ,Number=1,Type=Integer,"
-                             "Description=\"Genotype Quality\">");
+                 "Description=\"Genotype Quality\">");
 
   // Adding donor sample and removing all other samples
   const char *new_sample = "DONOR";
@@ -226,7 +159,7 @@ int main(int argc, char *argv[]) {
   }
 
   // References are stored in a map
-  std::map<std::string, std::string> refs;
+  std::unordered_map<std::string, std::string> refs;
   int l;
   while ((l = kseq_read(reference)) >= 0) {
     std::string id = reference->name.s;
@@ -239,10 +172,12 @@ int main(int argc, char *argv[]) {
 
   // STEP 1: add VCF kmers to bloom filter
   BF bf(opt::bf_size);
-  BF ref_bf(opt::bf_size);
+  // BF ref_bf(opt::bf_size);
+  KMAP ref_bf;
+  BF context_bf(opt::bf_size);
 
   std::vector<std::string> used_seq_names;
-  VB vb(opt::k);
+  VB vb(opt::k, opt::error_rate);
   std::string last_seq_name = "";
 
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
@@ -272,7 +207,7 @@ int main(int argc, char *argv[]) {
        * 3. clear block
        ***/
       VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-      add_kmers_to_bf(bf, kmers);
+      add_kmers_to_bf(bf, ref_bf, kmers);
       vb.clear();
       if(last_seq_name != v.seq_name) {
         last_seq_name = v.seq_name;
@@ -288,7 +223,7 @@ int main(int argc, char *argv[]) {
      * 3. clear block
      ***/
     VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-    add_kmers_to_bf(bf, kmers);
+    add_kmers_to_bf(bf, ref_bf, kmers);
     vb.clear();
   }
 
@@ -297,6 +232,7 @@ int main(int argc, char *argv[]) {
   bcf_close(vcf);
 
   bf.switch_mode();
+  // ref_bf.switch_mode();
 
   pelapsed("BF creation complete");
 
@@ -307,9 +243,8 @@ int main(int argc, char *argv[]) {
       std::string context(reference, 0, opt::ref_k);
       transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
       transform(context.begin(), context.end(), context.begin(), ::toupper);
-      if (bf.test_key(ref_ksub.c_str())) {
-        ref_bf.add_key(context.c_str());
-      }
+      if (bf.test_key(ref_ksub.c_str()) && !ref_bf.test_key(ref_ksub.c_str()))
+        context_bf.add_key(context.c_str());
       for (uint p = opt::ref_k; p < reference.size(); ++p) {
         char c1 = toupper(reference[p]);
         context.erase(0, 1);
@@ -317,8 +252,8 @@ int main(int argc, char *argv[]) {
         char c2 = toupper(reference[p - (opt::ref_k - opt::k) / 2]);
         ref_ksub.erase(0, 1);
         ref_ksub += c2;
-        if (bf.test_key(ref_ksub.c_str()))
-          ref_bf.add_key(context.c_str());
+        if (bf.test_key(ref_ksub.c_str()) && !ref_bf.test_key(ref_ksub.c_str()))
+          context_bf.add_key(context.c_str());
       }
     }
   }
@@ -330,8 +265,7 @@ int main(int argc, char *argv[]) {
 
   uint32 klen, mode, min_counter, pref_len, sign_len, min_c, counter;
   uint64 tot_kmers, max_c;
-  kmer_db.Info(klen, mode, min_counter, pref_len, sign_len, min_c, max_c,
-               tot_kmers);
+  kmer_db.Info(klen, mode, min_counter, pref_len, sign_len, min_c, max_c, tot_kmers);
   CKmerAPI kmer_obj(klen);
 
   char context[opt::ref_k + 1];
@@ -340,11 +274,12 @@ int main(int argc, char *argv[]) {
     if(counter >= opt::min_coverage) {
       kmer_obj.to_string(context);
       transform(context, context + opt::ref_k, context, ::toupper);
-      if (!ref_bf.test_key(context)) {
+      if (!context_bf.test_key(context)) {
         char kmer[opt::k + 1];
         strncpy(kmer, context + ((opt::ref_k - opt::k) / 2), opt::k);
         kmer[opt::k] = '\0';
         bf.increment_with_average(kmer, counter);
+        ref_bf.increment_with_average(kmer, counter);
       }
     }
   }
@@ -389,8 +324,9 @@ int main(int argc, char *argv[]) {
        * 4. clear block
        ***/
       VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-      std::vector<GT> gts = genotype(bf, vb, kmers, kmer_cov, opt::error_rate);
-      vb.output_variants(gts);
+      set_coverages(bf, ref_bf, vb, kmers);
+      vb.genotype();
+      vb.output_variants();
       vb.clear();
       if(last_seq_name != v.seq_name)
         last_seq_name = v.seq_name;
@@ -405,8 +341,9 @@ int main(int argc, char *argv[]) {
      * 4. clear block
      ***/
     VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-    std::vector<GT> gts = genotype(bf, vb, kmers, kmer_cov, opt::error_rate);
-    vb.output_variants(gts);
+    set_coverages(bf, ref_bf, vb, kmers);
+    vb.genotype();
+    vb.output_variants();
     vb.clear();
   }
 

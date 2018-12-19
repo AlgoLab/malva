@@ -73,19 +73,7 @@ public:
     _mode = true;
     _brank = rank_support_v<1>(&_bf);
     _counts = int_vector<8>(_brank(_size), 0, 8);
-  }
-
-  bool increment(const char *kmer) {
-    // TODO: remove this function or make it consistent with the other one.
-    if (!_mode)
-      return false;
-    uint64_t hash = _get_hash(kmer);
-    size_t bf_idx = hash % _size;
-    if (_bf[bf_idx]) {
-      size_t cnts_idx = _brank(bf_idx);
-      _counts[cnts_idx] = _counts[cnts_idx] < 250 ? _counts[cnts_idx] + 1 : 250;
-    }
-    return true;
+    _times = int_vector<8>(_brank(_size), 0, 8);
   }
 
   bool increment_with_average(const char *kmer, const uint32 counter) {
@@ -97,11 +85,13 @@ public:
       size_t cnts_idx = _brank(bf_idx);
       uint32 old_value = _counts[cnts_idx];
       uint32 new_value;
-      if (old_value == 0)
+      uint32 old_times = _times[cnts_idx];
+      if (old_times == 0)
         new_value = counter;
       else
-        new_value = round((_counts[cnts_idx] + counter) / 2);
+        new_value = (old_value * old_times + counter) / (old_times+1);
       _counts[cnts_idx] = new_value < 250 ? new_value : 250;
+      ++_times[cnts_idx];
     }
     return true;
   }
@@ -126,6 +116,7 @@ private:
   bit_vector _bf;
   rank_support_v<1> _brank;
   int_vector<8> _counts;
+  int_vector<8> _times;
 };
 
 #endif

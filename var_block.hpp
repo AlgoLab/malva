@@ -3,8 +3,8 @@
 
 #include "variant.hpp"
 
-typedef std::map<int, std::map<int, std::vector<std::vector<std::string>>>>
-    VK_GROUP;
+// Maybe these maps can be translated into vectors
+typedef std::map<int, std::map<int, std::vector<std::vector<std::string>>>> VK_GROUP;
 
 /**
  * Extend a container with another
@@ -18,11 +18,13 @@ class VB {
 private: // attributes
   std::vector<Variant> variants;
   int k;
+  float error_rate;
   int number_variants_out = 0;
 
 public:
-  VB(const int &_k) {
+  VB(const int &_k, const float _error_rate) {
     k = _k;
+    error_rate = _error_rate;
   }
   ~VB() {}
 
@@ -31,6 +33,10 @@ public:
   }
 
   void add_variant(const Variant &v) { variants.push_back(v); }
+
+  void set_variant_coverage(const int &v, const int &i, const int &cov) {
+    variants[v].set_coverage(i, cov);
+  }
 
   Variant get_variant(const int &i) const { return variants[i]; }
 
@@ -51,16 +57,16 @@ public:
       }
 
       std::vector<std::vector<int>> right_combs =
-          get_combs_on_the_right(v_index);
+        get_combs_on_the_right(v_index);
       std::vector<std::vector<int>> left_combs = get_combs_on_the_left(v_index);
 
       std::vector<std::vector<int>> combs =
-          combine_combs(left_combs, right_combs, v_index);
+        combine_combs(left_combs, right_combs, v_index);
 
       for (const std::vector<int> &comb : combs) {
         std::vector<std::string> ref_subs = get_ref_subs(comb, reference);
         std::set<std::vector<std::string>> alt_allele_combs =
-            build_alternative_alleles_combs(comb, v_index);
+          build_alternative_alleles_combs(comb, v_index);
 
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // !!! the body of this for could be split in more methods !!!
@@ -148,7 +154,71 @@ public:
     return kmers;
   }
 
-  void output_variants(const std::vector<GT> &genotypes) {
+  /**
+   * Method to compute and store the genotype of each variant of the block.
+   * ! We have to clean this method !
+   **/
+  void genotype() {
+    for (uint i = 0; i < variants.size(); ++i) {
+      Variant *v = &variants[i];
+      if (v->coverages.size() == 1) {
+        // The variant wasn't present in any sample: we have only the
+        // coverage of the reference allele
+        GT gt = std::make_pair("0/0", 1);
+        v->add_genotype(gt);
+        continue;
+      }
+
+      float max_prob = 0.0;
+      std::string best_geno = "0/0";
+      // !!! We cannot base our prediction only on the a priori !!!
+      // for (uint g = 0; g < v.frequencies.size(); ++g) {
+      //   if (v.frequencies[g] == 1.0) {
+      //     gt = std::make_pair(to_string(g) + "/" + to_string(g), 1);
+      //     vb.add_variant_genotype(vidx, gt);
+      //     return gt;
+      //   }
+      // }
+
+      for (uint g1 = 0; g1 < v->coverages.size(); ++g1) {
+        for (uint g2 = g1; g2 < v->coverages.size(); ++g2) {
+          float prior;
+          float posterior;
+          int total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0);
+          if (g1 == g2) {
+            prior = std::pow(v->frequencies[g1], 2);
+            int truth = v->coverages[g1];
+            int error = total_sum - truth;
+            posterior = binomial(truth + error, truth) *
+              pow(1 - error_rate, truth) * pow(error_rate, error);
+          } else {
+            prior = 2 * v->frequencies[g1] * v->frequencies[g2];
+            int truth1 = v->coverages[g1];
+            int truth2 = v->coverages[g2];
+            int error = total_sum - truth1 - truth2;
+            posterior = binomial(truth1 + truth2 + error, truth1 + truth2) *
+              binomial(truth1 + truth2, truth1) *
+              pow((1 - error_rate) / 2, truth1) *
+              pow((1 - error_rate) / 2, truth2) * pow(error_rate, error);
+          }
+
+          float prob = prior * posterior;
+          if (prob > max_prob) {
+            max_prob = prob;
+            best_geno = to_string(g1) + "/" + to_string(g2);
+          }
+          v->add_genotype(std::make_pair(to_string(g1) + "/" + to_string(g2), prob));
+        }
+      }
+    }
+  }
+
+  /**
+   * Method to output the variants of the block in VCF format.
+   * ! Info field is hand-made here (it's temporary: no definition in
+   * header). Also filter is set to "PASS" - see variant.hpp !
+   **/
+  void output_variants() {
     for (uint i = 0; i < variants.size(); ++i) {
       Variant *v = &variants[i];
       std::cout << v->seq_name << '\t' << v->ref_pos + 1 << '\t' << v->idx
@@ -160,9 +230,33 @@ public:
         if (varc != v->alts.size())
           std::cout << ',';
       }
-      std::cout << "\t" << v->quality << "\t" << v->filter << "\t" << v->info
-                << "\tGT:GQ\t" << genotypes[i].first << ":"
-                << (int)round(genotypes[i].second * 100) << "\n";
+      // Adds coverages to v->info (here I'm assuming v->info is '.')
+      std::string info = "COVS:";
+      for(const auto &cov : v->coverages)
+        info+=std::to_string(cov) + "-";
+      info.pop_back();
+      // Adds gts to v->info
+      std::string best_geno = "0/0";
+      float best_qual = 0;
+      info += ";GTS:";
+
+      float total_qual = 0.0;
+      for(const auto gt : v->computed_gts) {
+        total_qual += gt.second;
+      }
+      for(const auto gt : v->computed_gts) {
+        std::string geno = gt.first;
+        float qual = gt.second / total_qual;
+        if(qual > best_qual) {
+          best_geno = geno;
+          best_qual = qual;
+        }
+        info += geno + "_" + std::to_string(qual) + "-";
+      }
+      info.pop_back();
+      std::cout << "\t" << v->quality << "\t" << v->filter << "\t" << info
+                << "\tGT:GQ\t" << best_geno << ":"
+                << (int)round(best_qual * 100) << "\n";
     }
   }
 
@@ -178,7 +272,7 @@ private: // methods
    **/
   bool are_overlapping(const Variant &v1, const Variant &v2) const {
     return (v1.ref_pos <= v2.ref_pos) &&
-           (v2.ref_pos < v1.ref_pos + v1.ref_size);
+      (v2.ref_pos < v1.ref_pos + v1.ref_size);
   }
 
   /**
@@ -187,8 +281,8 @@ private: // methods
   bool are_near(const Variant &v1, const Variant &v2, const int &k,
                 const int &sum_to_add = 0) const {
     return v1.ref_pos + v1.ref_size - v1.min_size - 1 + sum_to_add +
-               ceil((float)k / 2) >=
-           v2.ref_pos;
+      ceil((float)k / 2) >=
+      v2.ref_pos;
   }
 
   /**
@@ -464,21 +558,27 @@ private: // methods
     for (const int &gt_i : central_v->positive_samples) {
       std::vector<std::string> aac;
       // If GT is not 0|0, then build the vector of alleles
-      if (central_v->genotypes[gt_i].first != 0) {
-        for (const int &j : comb)
-          aac.push_back(
-              variants[j].get_allele(variants[j].genotypes[gt_i].first));
-        aacs.insert(aac);
-      }
+      //if (central_v->genotypes[gt_i].first != 0) {
+      for (const int &j : comb)
+        aac.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].first));
+      aacs.insert(aac);
+      //}
       aac.clear();
-      if (central_v->genotypes[gt_i].second != 0) {
-        for (const int &j : comb)
-          aac.push_back(
-              variants[j].get_allele(variants[j].genotypes[gt_i].second));
-        aacs.insert(aac);
-      }
+      //if (central_v->genotypes[gt_i].second != 0) {
+      for (const int &j : comb)
+        aac.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].second));
+      aacs.insert(aac);
+      //}
     }
     return aacs;
+  }
+
+  /**
+   * Binomial coefficient is computed by using gamma function
+   **/
+  float binomial(const int &x, const int &y) {
+    return tgamma((float)x + 1.0) /
+      (tgamma((float)y + 1.0) * tgamma((float)x - (float)y + 1.0));
   }
 };
 

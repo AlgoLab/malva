@@ -1,7 +1,6 @@
 #ifndef _VARIANT_HPP_
 #define _VARIANT_HPP_
 
-#include <map>
 #include <numeric>
 #include <string>
 #include <vector>
@@ -18,15 +17,16 @@ struct Variant {
   std::string filter;                         // Filter field
   std::string info;                           // Info field
   std::vector<std::pair<int, int>> genotypes; // full list of genotypes
-  std::vector<bool> phasing; // true if genotype i-th is phased, false otherwise
-  int ref_size;              // Len of reference base{s}
-  int min_size;              // Length of the shortest string (ref and alts)
-  int max_size;              // Length of the longest string (ref and alts)
-  bool has_alts = true;      // false if no alternatives, i.e. only <CN>
-  bool is_present = true;    // false if no sample has this variant
-  std::vector<int> positive_samples; // indices of samples for which genotype is
-                                     // different from 00
-  std::vector<float> frequencies;    // Allele frequency in each population
+  std::vector<bool> phasing;                  // true if genotype i-th is phased, false otherwise
+  int ref_size;                               // Len of reference base{s}
+  int min_size;                               // Length of the shortest string (ref and alts)
+  int max_size;                               // Length of the longest string (ref and alts)
+  bool has_alts = true;                       // false if no alternatives, i.e. only <CN>
+  bool is_present = true;                     // false if no sample has this variant
+  std::vector<int> positive_samples;          // Indices of samples for which genotype is different from 00
+  std::vector<float> frequencies;             // Allele frequency in the considered population
+  std::vector<int> coverages;                 // Allele coverages (computed from input sample)
+  std::vector<GT> computed_gts;               // Computed genotypes
 
   Variant() {}
 
@@ -46,6 +46,7 @@ struct Variant {
       if (curr_alt[0] != '<')
         alts.push_back(std::string(curr_alt));
     }
+    coverages.resize(alts.size() + 1, 0); //+1 for the reference allele
     quality = vcf_record->qual;
     filter = "PASS"; // TODO: get filter string from VCF
     info = ".";      // TODO: get info string from VCF
@@ -93,8 +94,7 @@ struct Variant {
       frequencies.push_back(freq[0]);
     }
     // Here we compute the frequency of the reference allele
-    frequencies[0] =
-        1.0 - std::accumulate(frequencies.begin(), frequencies.end(), 0.0);
+    frequencies[0] = 1.0 - std::accumulate(frequencies.begin(), frequencies.end(), 0.0);
 
     if (frequencies[0] == 1.0)
       is_present = false;
@@ -148,6 +148,8 @@ struct Variant {
    *reference)
    **/
   int get_allele_index(const std::string &a) const {
+    if(ref_sub.compare(a) == 0)
+      return 0;
     int i = 1;
     for (const std::string &all : alts) {
       if (all.compare(a) == 0)
@@ -155,6 +157,16 @@ struct Variant {
       ++i;
     }
     return -1;
+  }
+
+  void set_coverage(const int &i, const int &cov) {
+    // maybe we can add some control here
+    coverages[i] = cov;
+  }
+
+  void add_genotype(const GT &gt) {
+    // maybe we can add some control here
+    computed_gts.push_back(gt);
   }
 };
 
