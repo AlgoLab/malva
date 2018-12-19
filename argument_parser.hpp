@@ -6,37 +6,52 @@
 #include <getopt.h>
 
 static const char *USAGE_MESSAGE =
-    "Usage: malva [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MIN-COV] "
-    "<reference.fa> <variants.vcf> <kmc_output_prefix>\n";
+  "Usage: malva [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MIN-COV] "
+  "<reference.fa> <variants.vcf> <kmc_output_prefix>\n"
+  "\n"
+  "Top notch description of this tool\n"
+  "\n"
+  "      -h, --help                        display this help and exit\n"
+  "      -l, --loose                       loose mode. If set then the reference kmers will not be removed (default: false)\n"
+  "      -k, --kmer-size                   size of the kmers to index (default:35)\n"
+  "      -r, --ref-kmer-size               size of the reference kmers to index (default:43)\n"
+  "      -n, --read-len                    length of input reads (default:150)\n"
+  "      -e, --error-rate                  expected sample error rate (default:0.001)\n"
+  "      -s, --sample-coverage             expected sample coverage (default:30)\n"
+  "      -p, --population                  population to consider while reading input VCF (default:EUR)\n"
+  "      -c, --min-coverage                minimum coverage for kmers (default:2)\n"
+  "      -b, --bf-size                     bloom filter size in GB (default:8)\n"
+  // "      -t, --threads                     number of threads (default: 1)\n"
+  "\n";
 
 namespace opt {
 static bool strict_mode = true;
-static uint k = 31;
+static uint k = 35;
 static uint ref_k = 43;
 static uint read_len = 150;
 static float error_rate = 0.001;
-static uint64_t bf_size = ((uint64_t)0b1 << 33);
-static uint min_coverage = 2;
 static uint sample_coverage = 30;
 static std::string pop = "EUR";
+static uint min_coverage = 2;
+static uint64_t bf_size = ((uint64_t)0b1 << 33);
 // static size_t nThreads = 1;
 static std::string fasta_path;
 static std::string vcf_path;
 static std::string kmc_sample_path;
-} // namespace opt
+}
 
-static const char *shortopts = "lk:r:b:c:e:n:s:p:h";
+static const char *shortopts = "lk:r:n:e:s:p:c:b:h";
 
 static const struct option longopts[] = {
     {"loose", no_argument, NULL, 'l'},
     {"kmer-size", required_argument, NULL, 'k'},
-    {"ref-kmer", required_argument, NULL, 'r'},
-    {"bf-size", required_argument, NULL, 'b'},
-    {"min-coverage", required_argument, NULL, 'c'},
-    {"error-rate", required_argument, NULL, 'e'},
+    {"ref-kmer-size", required_argument, NULL, 'r'},
     {"read-length", required_argument, NULL, 'n'},
+    {"error-rate", required_argument, NULL, 'e'},
     {"sample-coverage", required_argument, NULL, 's'},
     {"population", required_argument, NULL, 'p'},
+    {"min-coverage", required_argument, NULL, 'c'},
+    {"bf-size", required_argument, NULL, 'b'},
     // {"threads", no_argument, NULL, 't'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}};
@@ -56,28 +71,25 @@ void parse_arguments(int argc, char **argv) {
     case 'r':
       arg >> opt::ref_k;
       break;
-    case 'b':
-      // Let's consider this as MB
-      arg >> opt::bf_size;
-      opt::bf_size = opt::bf_size * (0b1 << 20);
-      break;
-    case 'c':
-      arg >> opt::min_coverage;
-      break;
-    // case 'x':
-    //   arg >> opt::max_coverage;
-    //   break;
-    case 'e':
-      arg >> opt::error_rate;
-      break;
     case 'n':
       arg >> opt::read_len;
+      break;
+    case 'e':
+      arg >> opt::error_rate;
       break;
     case 's':
       arg >> opt::sample_coverage;
       break;
     case 'p':
       arg >> opt::pop;
+      break;
+    case 'c':
+      arg >> opt::min_coverage;
+      break;
+    case 'b':
+      // Let's consider this as GB
+      arg >> opt::bf_size;
+      opt::bf_size = opt::bf_size * 1024 * (0b1 << 20);
       break;
     // case 't':
     //   arg >> opt::nThreads;
