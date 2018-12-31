@@ -20,7 +20,7 @@ static const char *USAGE_MESSAGE =
   "      -s, --sample-coverage             expected sample coverage (default:30)\n"
   "      -p, --population                  population to consider while reading input VCF (default:EUR)\n"
   "      -c, --min-coverage                minimum coverage for kmers (default:2)\n"
-  "      -b, --bf-size                     bloom filter size in GB (default:8)\n"
+  "      -b, --bf-size                     bloom filter size in GB (default:4)\n"
   // "      -t, --threads                     number of threads (default: 1)\n"
   "\n";
 
@@ -33,7 +33,7 @@ static float error_rate = 0.001;
 static uint sample_coverage = 30;
 static std::string pop = "EUR";
 static uint min_coverage = 2;
-static uint64_t bf_size = ((uint64_t)0b1 << 33);
+static uint64_t bf_size = ((uint64_t)0b1 << 35);
 // static size_t nThreads = 1;
 static std::string fasta_path;
 static std::string vcf_path;
@@ -89,7 +89,7 @@ void parse_arguments(int argc, char **argv) {
     case 'b':
       // Let's consider this as GB
       arg >> opt::bf_size;
-      opt::bf_size = opt::bf_size * 1024 * (0b1 << 20);
+      opt::bf_size = opt::bf_size * ((uint64_t)0b1 << 33);
       break;
     // case 't':
     //   arg >> opt::nThreads;
