@@ -100,7 +100,7 @@ rule prepare_vcf_for_vg:
         vcf = vcf_for_vg
     shell:
         """
-        cut -f 1-8 {input.vcf} | grep -v "##FORMAT=<ID=GT" > {output.vcf}
+        python3 format_vcf_as_dbsnp.py {input.vcf} > {output.vcf}
         """
 
 # MALVA rules

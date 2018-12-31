@@ -1,0 +1,108 @@
+malva_ram = 8
+ram_fold = str(malva_ram) + "G"
+
+in_fold = "/home/prj_vcfgeno/data/malva_gw_small/input"
+mid_fold = "/home/prj_vcfgeno/data/malva_gw_small/mid"
+out_fold = "/home/prj_vcfgeno/data/malva_gw_small/malva_tests"
+
+ref = os.path.join(in_fold, "hs37d5.fa")
+in_vcf = os.path.join(in_fold, "1kgen.ph3.EUR.vcf.gz")
+sample = os.path.join(mid_fold, "RMNISTHS_30xdownsample.fq")
+truth_vcf = os.path.join(mid_fold, "NA12878.vcf")
+
+malva_fold = "/home/prj_vcfgeno/software/malva"
+
+# Small k
+ks_ = [27, 31, 35, 39, 43, 47]
+
+# delta_k
+dks = [2, 6, 12, 18]
+
+ks = []
+Ks = []
+for k in ks_:
+    for dk in dks:
+        ks.append(k)
+        Ks.append(k+dk)
+
+rule run:
+    input:
+        expand(os.path.join(out_fold, ram_fold, "happy", "k{k}.K{K}.summary.csv"),
+               zip,
+               k = ks,
+               K = Ks)
+
+rule kmc:
+    input:
+        sample = sample
+    output:
+        suf = os.path.join(out_fold, "KMC", "KMC.K{K}.kmc_suf")
+    params:
+        out_prefix = os.path.join(out_fold, "KMC", "KMC.K{K}"),
+        tmp_fold = os.path.join(out_fold, "KMC", "KMC.K{K}_tmp"),
+        K = "{K}"
+    log:
+        time = os.path.join(out_fold, "KMC", "KMC.K{K}.time"),
+        out = os.path.join(out_fold, "KMC", "KMC.K{K}.log")
+    shell:
+        """
+        mkdir -p {params.tmp_fold}
+        /usr/bin/time -v -o {log.time} {malva_fold}/KMC/bin/kmc -m3 -t4 -k{params.K} {input.sample} {params.out_prefix} {params.tmp_fold} &> {log.out}
+        rm -r {params.tmp_fold}
+        """
+
+rule malva:
+    input:
+        ref = ref,
+        vcf = in_vcf,
+        suf = os.path.join(out_fold, "KMC", "KMC.K{K}.kmc_suf")
+    output:
+        vcf = os.path.join(out_fold, ram_fold, "malva", "malva.k{k}.K{K}.vcf")
+    params:
+        kmc_prefix = os.path.join(out_fold, "KMC", "KMC.K{K}"),
+        k = "{k}",
+        K = "{K}"
+    log:
+        time = os.path.join(out_fold, ram_fold, "malva", "malva.k{k}.K{K}.time"),
+        out = os.path.join(out_fold, ram_fold, "malva", "malva.k{k}.K{K}.log")
+    shell:
+        """
+        /usr/bin/time -v -o {log.time} {malva_fold}/malva -k {params.k} -r {params.K} -n 150 -e 0.001 -p EUR -c 2 -b {malva_ram} {input.ref} {input.vcf} {params.kmc_prefix} > {output.vcf} 2> {log.out}
+        """
+
+rule index_ref:
+    input:
+        ref
+    output:
+        ref + ".fai"
+    shell:
+        """
+        samtools faidx {input}
+        """
+
+rule clean_vcf:
+    input:
+        os.path.join(out_fold, ram_fold, "malva", "malva.k{k}.K{K}.vcf")
+    output:
+        os.path.join(out_fold, ram_fold, "malva", "malva.k{k}.K{K}.cvcf")
+    shell:
+        """
+        bash {malva_fold}/exps/scripts/clean_vcf.sh {input} > {output}
+        """
+
+rule happy:
+    input:
+        ref_index = ref + ".fai",
+        vcf = os.path.join(out_fold, ram_fold, "malva", "malva.k{k}.K{K}.cvcf")
+    output:
+        csv = os.path.join(out_fold, ram_fold, "happy", "k{k}.K{K}.summary.csv")
+    params:
+        ref = ref,
+        truth_vcf = truth_vcf,
+        out_prefix = os.path.join(out_fold, ram_fold, "happy", "k{k}.K{K}")
+    log:
+        out = os.path.join(out_fold, ram_fold, "happy", "k{k}.K{K}.log")
+    shell:
+        """
+        bash {malva_fold}/exps/run_happy.sh {params.ref} {params.truth_vcf} {input.vcf} {params.out_prefix} &> {log.out}
+        """
