@@ -25,7 +25,7 @@ struct Variant {
   bool is_present = true;                     // false if no sample has this variant
   std::vector<int> positive_samples;          // Indices of samples for which genotype is different from 00
   std::vector<float> frequencies;             // Allele frequency in the considered population
-  std::vector<int> coverages;                 // Allele coverages (computed from input sample)
+  std::vector<float> coverages;               // Allele coverages (computed from input sample)
   std::vector<GT> computed_gts;               // Computed genotypes
 
   Variant() {}
@@ -159,7 +159,7 @@ struct Variant {
     return -1;
   }
 
-  void set_coverage(const int &i, const int &cov) {
+  void set_coverage(const int &i, const float &cov) {
     // maybe we can add some control here
     coverages[i] = cov;
   }
@@ -167,6 +167,15 @@ struct Variant {
   void add_genotype(const GT &gt) {
     // maybe we can add some control here
     computed_gts.push_back(gt);
+  }
+
+  void normalize_coverages() {
+    float total_coverage = std::accumulate(coverages.begin(), coverages.end(), 0.0);
+    if(total_coverage != 0) {
+      for(uint i=0; i<coverages.size(); ++i) {
+        coverages[i] = coverages[i] / total_coverage;
+      }
+    }
   }
 };
 

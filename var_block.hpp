@@ -34,7 +34,7 @@ public:
 
   void add_variant(const Variant &v) { variants.push_back(v); }
 
-  void set_variant_coverage(const int &v, const int &i, const int &cov) {
+  void set_variant_coverage(const int &v, const int &i, const float &cov) {
     variants[v].set_coverage(i, cov);
   }
 
@@ -161,6 +161,7 @@ public:
   void genotype() {
     for (uint i = 0; i < variants.size(); ++i) {
       Variant *v = &variants[i];
+      // v->normalize_coverages();
       if (v->coverages.size() == 1) {
         // The variant wasn't present in any sample: we have only the
         // coverage of the reference allele
@@ -184,18 +185,18 @@ public:
         for (uint g2 = g1; g2 < v->coverages.size(); ++g2) {
           float prior;
           float posterior;
-          int total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0);
+          float total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
           if (g1 == g2) {
             prior = std::pow(v->frequencies[g1], 2);
-            int truth = v->coverages[g1];
-            int error = total_sum - truth;
+            float truth = v->coverages[g1];
+            float error = total_sum - truth;
             posterior = binomial(truth + error, truth) *
               pow(1 - error_rate, truth) * pow(error_rate, error);
           } else {
             prior = 2 * v->frequencies[g1] * v->frequencies[g2];
-            int truth1 = v->coverages[g1];
-            int truth2 = v->coverages[g2];
-            int error = total_sum - truth1 - truth2;
+            float truth1 = v->coverages[g1];
+            float truth2 = v->coverages[g2];
+            float error = total_sum - truth1 - truth2;
             posterior = binomial(truth1 + truth2 + error, truth1 + truth2) *
               binomial(truth1 + truth2, truth1) *
               pow((1 - error_rate) / 2, truth1) *

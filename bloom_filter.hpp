@@ -69,6 +69,13 @@ public:
     return _bf[hash % _size];
   }
 
+  int get_times(const char *kmer) const {
+    uint64_t hash = _get_hash(kmer);
+    size_t bf_idx = hash % _size;
+    size_t cnts_idx = _brank(bf_idx);
+    return _times[cnts_idx];
+  }
+
   void switch_mode() {
     _mode = true;
     _brank = rank_support_v<1>(&_bf);
@@ -76,20 +83,28 @@ public:
     _times = int_vector<8>(_brank(_size), 0, 8);
   }
 
-  bool increment_with_average(const char *kmer, const uint32 counter) {
+  bool increment(const char *kmer, const uint32 counter) {
     if (!_mode)
       return false;
     uint64_t hash = _get_hash(kmer);
     size_t bf_idx = hash % _size;
     if (_bf[bf_idx]) {
       size_t cnts_idx = _brank(bf_idx);
-      uint32 old_value = _counts[cnts_idx];
-      uint32 new_value;
-      uint32 old_times = _times[cnts_idx];
-      if (old_times == 0)
-        new_value = counter;
-      else
-        new_value = (old_value * old_times + counter) / (old_times+1);
+      uint32 new_value = _counts[cnts_idx] + counter;
+      _counts[cnts_idx] = new_value < 250 ? new_value : 250;
+      ++_times[cnts_idx];
+    }
+    return true;
+  }
+
+    bool increment_with_average(const char *kmer, const uint32 counter) {
+    if (!_mode)
+      return false;
+    uint64_t hash = _get_hash(kmer);
+    size_t bf_idx = hash % _size;
+    if (_bf[bf_idx]) {
+      size_t cnts_idx = _brank(bf_idx);
+      uint32 new_value = (_counts[cnts_idx] * _times[cnts_idx] + counter) / (_times[cnts_idx]+1);
       _counts[cnts_idx] = new_value < 250 ? new_value : 250;
       ++_times[cnts_idx];
     }

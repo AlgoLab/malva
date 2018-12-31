@@ -22,6 +22,7 @@
 
 struct KMAP {
   std::unordered_map<std::string, int> kmers;
+  std::unordered_map<std::string, int> _times;
 
   KMAP() {}
 
@@ -52,16 +53,21 @@ struct KMAP {
     kmers[ckmer] = 0;
   }
 
+  void increment(const char* kmer, int counter) {
+    std::string ckmer = canonical(kmer);
+    if(kmers.find(ckmer) != kmers.end()) {
+      uint32 new_value = kmers[ckmer] + counter;
+      kmers[ckmer] = new_value < 250 ? new_value : 250;
+      ++_times[ckmer];
+    }
+  }
+
   void increment_with_average(const char* kmer, int counter) {
     std::string ckmer = canonical(kmer);
     if(kmers.find(ckmer) != kmers.end()) {
-      uint32 old_value = kmers[ckmer];
-      uint32 new_value;
-      if (old_value == 0)
-        new_value = counter;
-      else
-        new_value = round((old_value + counter) / 2);
+      uint32 new_value = (kmers[ckmer] * _times[ckmer] + counter) / (_times[ckmer]+1);
       kmers[ckmer] = new_value < 250 ? new_value : 250;
+      ++_times[ckmer];
     }
   }
 
@@ -69,6 +75,14 @@ struct KMAP {
     std::string ckmer = canonical(kmer);
     if(kmers.find(ckmer) != kmers.end())
       return kmers[ckmer];
+    else
+      return 0;
+  }
+
+  int get_times(const char* kmer) {
+    std::string ckmer = canonical(kmer);
+    if(kmers.find(ckmer) != kmers.end())
+      return _times[ckmer];
     else
       return 0;
   }

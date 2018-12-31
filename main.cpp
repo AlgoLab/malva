@@ -56,58 +56,47 @@ void add_kmers_to_bf(BF &bf, KMAP &ref_bf, const VK_GROUP &kmers) {
 }
 
 /**
- * Method to compute and store the coverages of the variants of a
- * var_block. It uses the coverages stored in the bloom filters/map.
- * ! We have to clean this method.
+ * Method to compute and store the coverages of the alleles of the
+ * variants of a var_block. It uses the coverages stored in the bloom
+ * filters/map.
  **/
-void set_coverages(BF &bf, KMAP &ref_bf, VB &vb, const VK_GROUP &kmers) {
+void set_coverages(BF &bf, KMAP &ref_bf, VB &vb, const VK_GROUP &kmers, const float &cap) {
   for (const auto &var : kmers) {
     // For each variant
     Variant v = vb.get_variant(var.first);
     for (const auto &p : var.second) {
-      // For each allele of the variant
-      int all_cov = 0;
+      // For each allele of the variant, we can have:
+      //  - a single list of multiple kmers (ie allele is longer than k)
+      //  - multiple (>=1) lists of length 1
+      // In both the cases, we take as allele coverage the mean of the
+      // coverages
+      float allele_cov = 0;
       for (const auto &Ks : p.second) {
         // For each list of kmers of the allele
-        /**
-         * Here we can have:
-         * - a single list of multiple kmers (ie allele is longer than k)
-         * - multiple (>=1) lists of length 1
-         * In both the cases, we take as allele coverage the mean of the
-         * coverages
-         **/
-        if (Ks.size() == 1) {
-          uint w = 0;
-          if(p.first == 0)
-            w = ref_bf.get_count(Ks[0].c_str());
-          else
-            w = bf.get_count(Ks[0].c_str());
-          if (w != 0) {
-            // If we have only a single kmer, only if it is covered,
-            // we can use its coverage. Otherwise, we do not consider
-            // it at all (possible there will be other kmers)
-            if (all_cov == 0)
-              all_cov = w;
-            else
-              all_cov = round(all_cov + w) / 2;
-          }
-        } else {
-          // We have more kmers: we iterate to compute the average coverage
-          for (const auto &kmer : Ks) {
-            uint w = 0;
-            if(p.first == 0)
-              w = ref_bf.get_count(kmer.c_str());
-            else
-              w = bf.get_count(kmer.c_str());
-            if (all_cov == 0)
-              all_cov = w;
-            else
-              all_cov = round(all_cov + w) / 2;
-          }
-        }
+	// uint n = 0;
+	uint w = 0;
+	for (const auto &kmer : Ks) {
+	  if(p.first == 0) {
+	    // if(ref_bf.get_times(kmer.c_str()) > 1)
+	    //   w = 0;
+	    // else
+	    w = ref_bf.get_count(kmer.c_str());
+	  } else {
+	    // if(bf.get_times(kmer.c_str()) > 1)
+	    //   w = 0;
+	    // else
+	    w = bf.get_count(kmer.c_str());
+	  }
+	  // // w = std::min((float)w, cap+1);
+	  if(w>0 /* && w <= cap+1 */) {
+	    // allele_cov = (allele_cov * n + w) / (n + 1);
+	    allele_cov += w;
+	    // ++n;
+	  }
+	}
       }
       // we can now set the allele coverage
-      vb.set_variant_coverage(var.first, p.first, all_cov);
+      vb.set_variant_coverage(var.first, p.first, allele_cov);
     }
   }
 }
@@ -258,31 +247,42 @@ int main(int argc, char *argv[]) {
     }
   }
 
+
   pelapsed("Reference BF creation complete");
 
   // STEP 2: test variants present in read sample
-  uint32 kmer_cov = opt::sample_coverage * (opt::read_len - opt::ref_k + 1) / opt::read_len * (1 - opt::error_rate * opt::ref_k);
-
   uint32 klen, mode, min_counter, pref_len, sign_len, min_c, counter;
   uint64 tot_kmers, max_c;
   kmer_db.Info(klen, mode, min_counter, pref_len, sign_len, min_c, max_c, tot_kmers);
   CKmerAPI kmer_obj(klen);
 
+  double kmer_sum = 0.0;
+  double kmer_sum2 = 0.0;
+  double kmer_n = 0.0;
+
   char context[opt::ref_k + 1];
   while (kmer_db.ReadNextKmer(kmer_obj, counter)) {
-    counter = std::min(counter, kmer_cov);
     if(counter >= opt::min_coverage) {
+
+      ++kmer_n;
+      kmer_sum += counter;
+      kmer_sum2 += counter*counter;
+
       kmer_obj.to_string(context);
       transform(context, context + opt::ref_k, context, ::toupper);
       if (!context_bf.test_key(context)) {
         char kmer[opt::k + 1];
         strncpy(kmer, context + ((opt::ref_k - opt::k) / 2), opt::k);
         kmer[opt::k] = '\0';
-        bf.increment_with_average(kmer, counter);
-        ref_bf.increment_with_average(kmer, counter);
+        bf.increment(kmer, counter);
+        ref_bf.increment(kmer, counter);
       }
     }
   }
+
+  float kmer_mean = kmer_sum / kmer_n;
+  float kmer_ds = sqrt((kmer_sum2 - kmer_sum*kmer_sum / kmer_n) / kmer_n);
+  float cap = kmer_mean + 2*kmer_ds;
 
   pelapsed("BF weights created");
 
@@ -324,7 +324,7 @@ int main(int argc, char *argv[]) {
        * 4. clear block
        ***/
       VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-      set_coverages(bf, ref_bf, vb, kmers);
+      set_coverages(bf, ref_bf, vb, kmers, cap);
       vb.genotype();
       vb.output_variants();
       vb.clear();
@@ -341,7 +341,7 @@ int main(int argc, char *argv[]) {
      * 4. clear block
      ***/
     VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-    set_coverages(bf, ref_bf, vb, kmers);
+    set_coverages(bf, ref_bf, vb, kmers, cap);
     vb.genotype();
     vb.output_variants();
     vb.clear();
