@@ -1,6 +1,6 @@
 resources:
   folds:
-    root: /home/prj_vcfgeno/data/malva_gw_small
+    root: /home/prj_vcfgeno/data/malva_gw
     tools : /home/prj_vcfgeno/software/
     in : input
     mid : mid

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 base_url="ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502"
-panel="integrated_call_male_samples_v3.20130502.ALL.panel"
+panel="integrated_call_samples_v3.20130502.ALL.panel"
 chr1_vcf="ALL.chr1.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"
 vcfs=("ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"
       "ALL.chr11.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"
@@ -48,7 +48,7 @@ do
     echo ${vcf}
     fetch ${vcf}
     fetch ${vcf}.tbi
-    bcftools view -S ${tmpf} ${in_vcf} >> ${out_vcf}
+    bcftools view -S ${tmpf} ${vcf} >> ${out_vcf}
     rm ${vcf}
     rm ${vcf}.tbi
 done

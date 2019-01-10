@@ -41,7 +41,7 @@ mid_fold = os.path.join(root_fold, folds["mid"])
 
 vcf_for_vg = os.path.join(mid_fold, files["vcf_for_vargeno"])
 truth_vcf = os.path.join(mid_fold, "{}.vcf".format(truth_sample))
-sample = os.path.join(mid_fold, "{}.fq".format(sample_name))
+sample = os.path.join(mid_fold, "{}.fa".format(sample_name))
 
 # Output folds and files
 out_fold = os.path.join(root_fold, folds["out"])
@@ -68,39 +68,41 @@ This rule prepare the input for the next steps - It populates mid folder with:
 '''
 rule setup_input:
     input:
-        vcf_for_vg,
+        #vcf_for_vg,
         truth_vcf,
         sample
 
 rule extract_truth:
     input:
-        vcf = vcf
+        vcf
     output:
-        truth = truth_vcf
+        truth_vcf
     shell:
         """
-        bcftools view -s {truth_sample} {input.vcf} | bgzip -c > {output.truth}
-        tabix -p vcf {output.truth}
+        bgzip -c {input} > {input}.gz
+        tabix -p vcf {input}.gz
+        bcftools view -s {truth_sample} {input}.gz | bgzip -c > {output}
+        tabix -p vcf {output}
         """
 
 rule extract_sample:
     input:
-        bam = sample_bam
+        sample_bam
     output:
-        sample = sample
+        sample
     shell:
         """
-        samtools fastq {input.bam} > {output.sample}
+        samtools fasta {input} > {output}
         """
 
 rule prepare_vcf_for_vg:
     input:
-        vcf = vcf
+        vcf
     output:
-        vcf = vcf_for_vg
+        vcf_for_vg
     shell:
         """
-        python3 format_vcf_as_dbsnp.py {input.vcf} > {output.vcf}
+        python3 format_vcf_as_dbsnp.py {input} > {output}
         """
 
 # MALVA rules
