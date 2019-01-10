@@ -6,6 +6,8 @@
 // Maybe these maps can be translated into vectors
 typedef std::map<int, std::map<int, std::vector<std::vector<std::string>>>> VK_GROUP;
 
+typedef long double ldouble;
+
 /**
  * Extend a container with another
  **/
@@ -156,23 +158,35 @@ public:
 
   /**
    * Method to compute and store the genotype of each variant of the block.
-   * ! We have to clean this method !
    **/
-  void genotype() {
+  void genotype(const int &max_cov) {
     for (uint i = 0; i < variants.size(); ++i) {
       Variant *v = &variants[i];
-      // v->normalize_coverages();
+
+      // If some allele is too covered, assign 0/0 and continue
+      bool continue_flag = false;
+      for(const int &cov : v->coverages) {
+        if(cov > max_cov) {
+          GT gt = std::make_pair("0/0", 1);
+          v->add_genotype(gt);
+          continue_flag = true;
+          continue;
+        }
+      }
+      if(continue_flag)
+        continue;
+
+      // The variant wasn't present in any sample: we have only the
+      // coverage of the reference allele
       if (v->coverages.size() == 1) {
-        // The variant wasn't present in any sample: we have only the
-        // coverage of the reference allele
         GT gt = std::make_pair("0/0", 1);
         v->add_genotype(gt);
         continue;
       }
 
-      float max_prob = 0.0;
+      ldouble max_prob = 0.0;
       std::string best_geno = "0/0";
-      // !!! We cannot base our prediction only on the a priori !!!
+      // !!! We shouldn't base our prediction only on the a priori !!!
       // for (uint g = 0; g < v.frequencies.size(); ++g) {
       //   if (v.frequencies[g] == 1.0) {
       //     gt = std::make_pair(to_string(g) + "/" + to_string(g), 1);
@@ -183,27 +197,27 @@ public:
 
       for (uint g1 = 0; g1 < v->coverages.size(); ++g1) {
         for (uint g2 = g1; g2 < v->coverages.size(); ++g2) {
-          float prior;
-          float posterior;
-          float total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
+          ldouble prior;
+          ldouble posterior;
+          ldouble total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
           if (g1 == g2) {
             prior = std::pow(v->frequencies[g1], 2);
-            float truth = v->coverages[g1];
-            float error = total_sum - truth;
+            ldouble truth = v->coverages[g1];
+            ldouble error = total_sum - truth;
             posterior = binomial(truth + error, truth) *
               pow(1 - error_rate, truth) * pow(error_rate, error);
           } else {
             prior = 2 * v->frequencies[g1] * v->frequencies[g2];
-            float truth1 = v->coverages[g1];
-            float truth2 = v->coverages[g2];
-            float error = total_sum - truth1 - truth2;
+            ldouble truth1 = v->coverages[g1];
+            ldouble truth2 = v->coverages[g2];
+            ldouble error = total_sum - truth1 - truth2;
             posterior = binomial(truth1 + truth2 + error, truth1 + truth2) *
               binomial(truth1 + truth2, truth1) *
               pow((1 - error_rate) / 2, truth1) *
               pow((1 - error_rate) / 2, truth2) * pow(error_rate, error);
           }
 
-          float prob = prior * posterior;
+          ldouble prob = prior * posterior;
           if (prob > max_prob) {
             max_prob = prob;
             best_geno = to_string(g1) + "/" + to_string(g2);
@@ -238,16 +252,16 @@ public:
       info.pop_back();
       // Adds gts to v->info
       std::string best_geno = "0/0";
-      float best_qual = 0;
+      ldouble best_qual = 0;
       info += ";GTS:";
 
-      float total_qual = 0.0;
+      ldouble total_qual = 0.0;
       for(const auto gt : v->computed_gts) {
         total_qual += gt.second;
       }
       for(const auto gt : v->computed_gts) {
         std::string geno = gt.first;
-        float qual = gt.second / total_qual;
+        ldouble qual = gt.second / total_qual;
         if(qual > best_qual) {
           best_geno = geno;
           best_qual = qual;
@@ -577,9 +591,9 @@ private: // methods
   /**
    * Binomial coefficient is computed by using gamma function
    **/
-  float binomial(const int &x, const int &y) {
-    return tgamma((float)x + 1.0) /
-      (tgamma((float)y + 1.0) * tgamma((float)x - (float)y + 1.0));
+  ldouble binomial(const double &x, const double &y) {
+    return tgammal(x + 1.0) /
+      (tgammal(y + 1.0) * tgammal(x - y + 1.0));
   }
 };
 

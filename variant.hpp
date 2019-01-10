@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-typedef std::pair<std::string, float> GT;
+typedef std::pair<std::string, long double> GT;
 
 struct Variant {
   std::string seq_name;
@@ -169,6 +169,7 @@ struct Variant {
     computed_gts.push_back(gt);
   }
 
+  /**
   void normalize_coverages() {
     float total_coverage = std::accumulate(coverages.begin(), coverages.end(), 0.0);
     if(total_coverage != 0) {
@@ -177,6 +178,14 @@ struct Variant {
       }
     }
   }
+
+  void clean_coverages() {
+    for(uint i=0; i<coverages.size(); ++i) {
+      if(coverages[i] > 100)
+        coverages[i] = 0;
+    }
+  }
+  **/
 };
 
 #endif

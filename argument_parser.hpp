@@ -6,7 +6,7 @@
 #include <getopt.h>
 
 static const char *USAGE_MESSAGE =
-  "Usage: malva [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MIN-COV] "
+  "Usage: malva [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] "
   "<reference.fa> <variants.vcf> <kmc_output_prefix>\n"
   "\n"
   "Top notch description of this tool\n"
@@ -17,9 +17,9 @@ static const char *USAGE_MESSAGE =
   "      -r, --ref-kmer-size               size of the reference kmers to index (default:43)\n"
   "      -n, --read-len                    length of input reads (default:150)\n"
   "      -e, --error-rate                  expected sample error rate (default:0.001)\n"
-  "      -s, --sample-coverage             expected sample coverage (default:30)\n"
+  // "      -s, --sample-coverage             expected sample coverage (default:30)\n"
   "      -p, --population                  population to consider while reading input VCF (default:EUR)\n"
-  "      -c, --min-coverage                minimum coverage for kmers (default:2)\n"
+  "      -c, --max-coverage                maximum coverage for variant alleles (default:200)\n"
   "      -b, --bf-size                     bloom filter size in GB (default:4)\n"
   // "      -t, --threads                     number of threads (default: 1)\n"
   "\n";
@@ -30,9 +30,9 @@ static uint k = 35;
 static uint ref_k = 43;
 static uint read_len = 150;
 static float error_rate = 0.001;
-static uint sample_coverage = 30;
+// static uint sample_coverage = 30;
 static std::string pop = "EUR";
-static uint min_coverage = 2;
+static uint max_coverage = 200;
 static uint64_t bf_size = ((uint64_t)0b1 << 35);
 // static size_t nThreads = 1;
 static std::string fasta_path;
@@ -48,9 +48,9 @@ static const struct option longopts[] = {
     {"ref-kmer-size", required_argument, NULL, 'r'},
     {"read-length", required_argument, NULL, 'n'},
     {"error-rate", required_argument, NULL, 'e'},
-    {"sample-coverage", required_argument, NULL, 's'},
+    // {"sample-coverage", required_argument, NULL, 's'},
     {"population", required_argument, NULL, 'p'},
-    {"min-coverage", required_argument, NULL, 'c'},
+    {"max-coverage", required_argument, NULL, 'c'},
     {"bf-size", required_argument, NULL, 'b'},
     // {"threads", no_argument, NULL, 't'},
     {"help", no_argument, NULL, 'h'},
@@ -77,14 +77,14 @@ void parse_arguments(int argc, char **argv) {
     case 'e':
       arg >> opt::error_rate;
       break;
-    case 's':
-      arg >> opt::sample_coverage;
-      break;
+    // case 's':
+    //   arg >> opt::sample_coverage;
+    //   break;
     case 'p':
       arg >> opt::pop;
       break;
     case 'c':
-      arg >> opt::min_coverage;
+      arg >> opt::max_coverage;
       break;
     case 'b':
       // Let's consider this as GB
