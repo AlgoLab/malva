@@ -1,0 +1,14 @@
+resources:
+  folds:
+    root: /home/prj_vcfgeno/data/malva_gw_small/
+    malva : /home/prj_vcfgeno/software/malva
+    in : input
+    mid : mid
+    out: malva_tests
+  files:
+    ref : hs37d5.fa
+    vcf : 1kgen.ph3.EUR.vcf.gz
+    sample : RMNISTHS_30xdownsample.fq.gz
+    truth_vcf : NA12878.vcf
+  info:
+    malva_ram : 4
