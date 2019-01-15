@@ -230,10 +230,11 @@ public:
 
   /**
    * Method to output the variants of the block in VCF format.
-   * ! Info field is hand-made here (it's temporary: no definition in
-   * header). Also filter is set to "PASS" - see variant.hpp !
+   * ! Clean this method! In verbose mode, info field is hand-made
+   * (no definition in header). Also filter is set to "PASS" -
+   * see variant.hpp !
    **/
-  void output_variants() {
+  void output_variants(const bool &verbose) {
     for (uint i = 0; i < variants.size(); ++i) {
       Variant *v = &variants[i];
       std::cout << v->seq_name << '\t' << v->ref_pos + 1 << '\t' << v->idx
@@ -245,30 +246,37 @@ public:
         if (varc != v->alts.size())
           std::cout << ',';
       }
-      // Adds coverages to v->info (here I'm assuming v->info is '.')
-      std::string info = "COVS:";
-      for(const auto &cov : v->coverages)
-        info+=std::to_string(cov) + "-";
-      info.pop_back();
+      std::string info = ".";
+      if(verbose) {
+        // Adds coverages to v->info (here I'm assuming v->info is '.')
+        info = "COVS:";
+        for(const auto &cov : v->coverages)
+          info+=std::to_string(cov) + "-";
+        info.pop_back();
+      }
       // Adds gts to v->info
       std::string best_geno = "0/0";
       ldouble best_qual = 0;
-      info += ";GTS:";
-
       ldouble total_qual = 0.0;
       for(const auto gt : v->computed_gts) {
         total_qual += gt.second;
       }
+      std::string geno = "";
+      ldouble qual = 0.0;
+      if(verbose)
+        info += ";GTS:";
       for(const auto gt : v->computed_gts) {
-        std::string geno = gt.first;
-        ldouble qual = gt.second / total_qual;
+        geno = gt.first;
+        qual = gt.second / total_qual;
         if(qual > best_qual) {
           best_geno = geno;
           best_qual = qual;
         }
-        info += geno + "_" + std::to_string(qual) + "-";
+        if(verbose)
+          info += geno + "_" + std::to_string(qual) + "-";
       }
-      info.pop_back();
+      if(verbose)
+        info.pop_back();
       std::cout << "\t" << v->quality << "\t" << v->filter << "\t" << info
                 << "\tGT:GQ\t" << best_geno << ":"
                 << (int)round(best_qual * 100) << "\n";

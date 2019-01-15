@@ -323,7 +323,7 @@ int main(int argc, char *argv[]) {
       VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
       set_coverages(bf, ref_bf, vb, kmers/*, cap */);
       vb.genotype(opt::max_coverage);
-      vb.output_variants();
+      vb.output_variants(opt::verbose);
       vb.clear();
       if(last_seq_name != v.seq_name)
         last_seq_name = v.seq_name;
@@ -340,7 +340,7 @@ int main(int argc, char *argv[]) {
     VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
     set_coverages(bf, ref_bf, vb, kmers/*, cap*/);
     vb.genotype(opt::max_coverage);
-    vb.output_variants();
+    vb.output_variants(opt::verbose);
     vb.clear();
   }
 
