@@ -6,24 +6,34 @@
 #include <getopt.h>
 
 static const char *USAGE_MESSAGE =
-  "Usage: malva [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] "
-  "<reference.fa> <variants.vcf> <kmc_output_prefix>\n"
-  "\n"
-  "Top notch description of this tool\n"
-  "\n"
-  "      -h, --help                        display this help and exit\n"
-  "      -l, --loose                       loose mode. If set then the reference kmers will not be removed (default: false)\n"
-  "      -k, --kmer-size                   size of the kmers to index (default:35)\n"
-  "      -r, --ref-kmer-size               size of the reference kmers to index (default:43)\n"
-  "      -n, --read-len                    length of input reads (default:150)\n"
-  "      -e, --error-rate                  expected sample error rate (default:0.001)\n"
-  // "      -s, --sample-coverage             expected sample coverage (default:30)\n"
-  "      -p, --population                  population to consider while reading input VCF (default:EUR)\n"
-  "      -c, --max-coverage                maximum coverage for variant alleles (default:200)\n"
-  "      -b, --bf-size                     bloom filter size in GB (default:4)\n"
-  "      -v, --verbose                     output a detailed VCF (more information in the INFO column)\n"
-  // "      -t, --threads                     number of threads (default: 1)\n"
-  "\n";
+    "Usage: malva [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] "
+    "<reference.fa> <variants.vcf> <kmc_output_prefix>\n"
+    "\n"
+    "Top notch description of this tool\n"
+    "\n"
+    "      -h, --help                        display this help and exit\n"
+    "      -l, --loose                       loose mode. If set then the "
+    "reference kmers will not be removed (default: false)\n"
+    "      -k, --kmer-size                   size of the kmers to index "
+    "(default:35)\n"
+    "      -r, --ref-kmer-size               size of the reference kmers to "
+    "index (default:43)\n"
+    "      -n, --read-len                    length of input reads "
+    "(default:150)\n"
+    "      -e, --error-rate                  expected sample error rate "
+    "(default:0.001)\n"
+    // "      -s, --sample-coverage             expected sample coverage
+    // (default:30)\n"
+    "      -p, --population                  population to consider while "
+    "reading input VCF (default:EUR)\n"
+    "      -c, --max-coverage                maximum coverage for variant "
+    "alleles (default:200)\n"
+    "      -b, --bf-size                     bloom filter size in GB "
+    "(default:4)\n"
+    "      -v, --verbose                     output a detailed VCF (more "
+    "information in the INFO column)\n"
+    "      -t, --threads                     number of threads (default: 2)\n"
+    "\n";
 
 namespace opt {
 static bool strict_mode = true;
@@ -36,13 +46,13 @@ static std::string pop = "EUR";
 static uint max_coverage = 200;
 static uint64_t bf_size = ((uint64_t)0b1 << 35);
 static bool verbose = false;
-// static size_t nThreads = 1;
+static size_t nThreads = 2;
 static std::string fasta_path;
 static std::string vcf_path;
 static std::string kmc_sample_path;
-}
+} // namespace opt
 
-static const char *shortopts = "lk:r:n:e:s:p:c:b:vh";
+static const char *shortopts = "lk:r:n:e:s:p:c:b:t:vh";
 
 static const struct option longopts[] = {
     {"loose", no_argument, NULL, 'l'},
@@ -55,7 +65,7 @@ static const struct option longopts[] = {
     {"max-coverage", required_argument, NULL, 'c'},
     {"bf-size", required_argument, NULL, 'b'},
     {"verbose", no_argument, NULL, 'v'},
-    // {"threads", no_argument, NULL, 't'},
+    {"threads", required_argument, NULL, 't'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}};
 
@@ -97,9 +107,11 @@ void parse_arguments(int argc, char **argv) {
     case 'v':
       opt::verbose = true;
       break;
-    // case 't':
-    //   arg >> opt::nThreads;
-    //   break;
+    case 't':
+      arg >> opt::nThreads;
+      if (opt::nThreads == 1)
+        opt::nThreads = 2;
+      break;
     case '?':
       die = true;
       break;

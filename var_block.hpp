@@ -284,8 +284,8 @@ public:
   }
 
 private: // methods
-  const VB &operator=(const VB &other) { return *this; }
-  const VB &operator=(const VB &&other) { return *this; }
+  //  const VB &operator=(const VB &other) { return *this; }
+  //  const VB &operator=(const VB &&other) { return *this; }
 
   //- General methods for managing variants --------------------------
   //------------------------------------------------------------------

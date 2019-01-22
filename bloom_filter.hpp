@@ -4,7 +4,10 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <mutex>
 #include <sdsl/bit_vectors.hpp>
+#include <shared_mutex>
+#include <thread>
 
 #include "MurmurHash3.hpp"
 #include "kmc_api/kmc_file.h"
@@ -56,27 +59,32 @@ public:
 
   void add_key(const char *kmer) {
     uint64_t hash = _get_hash(kmer);
+    unique_lock lock(_mutex);
     _bf[hash % _size] = 1;
   }
 
   void add_refkey(const char *kmer) {
     uint64_t hash = _get_hash(kmer);
+    unique_lock lock(_mutex);
     _bf[hash % _size] = 0;
   }
 
   bool test_key(const char *kmer) const {
     uint64_t hash = _get_hash(kmer);
+    shared_lock lock(_mutex);
     return _bf[hash % _size];
   }
 
   int get_times(const char *kmer) const {
     uint64_t hash = _get_hash(kmer);
     size_t bf_idx = hash % _size;
+    unique_lock lock(_mutex);
     size_t cnts_idx = _brank(bf_idx);
     return _times[cnts_idx];
   }
 
   void switch_mode() {
+    unique_lock lock(_mutex);
     _mode = true;
     _brank = rank_support_v<1>(&_bf);
     _counts = int_vector<8>(_brank(_size), 0, 8);
@@ -88,6 +96,7 @@ public:
       return false;
     uint64_t hash = _get_hash(kmer);
     size_t bf_idx = hash % _size;
+    unique_lock lock(_mutex);
     if (_bf[bf_idx]) {
       size_t cnts_idx = _brank(bf_idx);
       uint32 new_value = _counts[cnts_idx] + counter;
@@ -97,14 +106,16 @@ public:
     return true;
   }
 
-    bool increment_with_average(const char *kmer, const uint32 counter) {
+  bool increment_with_average(const char *kmer, const uint32 counter) {
     if (!_mode)
       return false;
     uint64_t hash = _get_hash(kmer);
     size_t bf_idx = hash % _size;
+    unique_lock lock(_mutex);
     if (_bf[bf_idx]) {
       size_t cnts_idx = _brank(bf_idx);
-      uint32 new_value = (_counts[cnts_idx] * _times[cnts_idx] + counter) / (_times[cnts_idx]+1);
+      uint32 new_value = (_counts[cnts_idx] * _times[cnts_idx] + counter) /
+                         (_times[cnts_idx] + 1);
       _counts[cnts_idx] = new_value < 250 ? new_value : 250;
       ++_times[cnts_idx];
     }
@@ -115,6 +126,7 @@ public:
     if (_mode) {
       uint64_t hash = _get_hash(kmer);
       size_t bf_idx = hash % _size;
+      shared_lock lock(_mutex);
       if (_bf[bf_idx])
         return _counts[_brank(bf_idx)];
     }
@@ -126,6 +138,7 @@ private:
   const BF &operator=(const BF &other) { return *this; }
   const BF &operator=(const BF &&other) { return *this; }
 
+  mutable std::shared_mutex _mutex;
   bool _mode; // false = write, true = read
   size_t _size;
   bit_vector _bf;

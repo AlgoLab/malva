@@ -2,11 +2,12 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <thread>
 #include <utility>
 
-#include <unordered_map>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <math.h>
@@ -19,8 +20,8 @@
 
 #include "argument_parser.hpp"
 #include "bloom_filter.hpp"
-#include "var_block.hpp"
 #include "kmap.hpp"
+#include "var_block.hpp"
 
 auto start_t = chrono::high_resolution_clock::now();
 
@@ -45,7 +46,7 @@ void add_kmers_to_bf(BF &bf, BF &ref_bf, const VK_GROUP &kmers) {
         // For each list of kmers of the allele
         for (const auto &kmer : Ks) {
           // For each kmer in the kmer list
-          if(p.first == 0)
+          if (p.first == 0)
             ref_bf.add_key(kmer.c_str());
           else
             bf.add_key(kmer.c_str());
@@ -60,7 +61,8 @@ void add_kmers_to_bf(BF &bf, BF &ref_bf, const VK_GROUP &kmers) {
  * variants of a var_block. It uses the coverages stored in the bloom
  * filters/map.
  **/
-void set_coverages(BF &bf, BF &ref_bf, VB &vb, const VK_GROUP &kmers/*, const float &cap*/) {
+void set_coverages(BF &bf, BF &ref_bf, VB &vb,
+                   const VK_GROUP &kmers /*, const float &cap*/) {
   for (const auto &var : kmers) {
     // For each variant
     Variant v = vb.get_variant(var.first);
@@ -76,19 +78,19 @@ void set_coverages(BF &bf, BF &ref_bf, VB &vb, const VK_GROUP &kmers/*, const fl
         // uint n = 0;
         uint w = 0;
         for (const auto &kmer : Ks) {
-          if(p.first == 0) {
+          if (p.first == 0) {
             // if(ref_bf.get_times(kmer.c_str()) > 1)
             //   w = 0;
             // else
-              w = ref_bf.get_count(kmer.c_str());
+            w = ref_bf.get_count(kmer.c_str());
           } else {
             // if(bf.get_times(kmer.c_str()) > 1)
             //   w = 0;
             // else
-              w = bf.get_count(kmer.c_str());
+            w = bf.get_count(kmer.c_str());
           }
           // // w = std::min((float)w, cap+1);
-          if(w>0 /* && w <= cap+1 */) {
+          if (w > 0 /* && w <= cap+1 */) {
             // allele_cov = (allele_cov * n + w) / (n + 1);
             // ++n;
             allele_cov += w;
@@ -101,6 +103,11 @@ void set_coverages(BF &bf, BF &ref_bf, VB &vb, const VK_GROUP &kmers/*, const fl
   }
 }
 
+void extract_kmers_p(VB vb, BF &bf, BF &ref_bf, string &ref) {
+  VK_GROUP kmers = vb.extract_kmers(ref);
+  add_kmers_to_bf(bf, ref_bf, kmers);
+}
+
 /**
  * Method to clean and print VCF header. It adds GT and GQ FORMAT,
  * removes all samples, and adds donor sample.
@@ -108,9 +115,9 @@ void set_coverages(BF &bf, BF &ref_bf, VB &vb, const VK_GROUP &kmers/*, const fl
 void print_cleaned_header(bcf_hdr_t *vcf_header) {
   // Adding format fields - if already present, they won't be added
   bcf_hdr_append(vcf_header, "##FORMAT=<ID=GT,Number=1,Type=String,"
-                 "Description=\"Genotype\">");
+                             "Description=\"Genotype\">");
   bcf_hdr_append(vcf_header, "##FORMAT=<ID=GQ,Number=1,Type=Integer,"
-                 "Description=\"Genotype Quality\">");
+                             "Description=\"Genotype Quality\">");
 
   // Adding donor sample and removing all other samples
   const char *new_sample = "DONOR";
@@ -126,6 +133,23 @@ void print_cleaned_header(bcf_hdr_t *vcf_header) {
 }
 
 // ---------------------------------------------------------------------------
+
+void add_weights(vector<pair<CKmerAPI, uint32>> kmer_objs, BF &bf, BF &ref_bf,
+                 BF &context_bf) {
+  char context[opt::ref_k + 1];
+  for (auto &kp : kmer_objs) {
+    kp.first.to_string(context);
+    uint32 counter = kp.second;
+    transform(context, context + opt::ref_k, context, ::toupper);
+    if (!context_bf.test_key(context)) {
+      char kmer[opt::k + 1];
+      strncpy(kmer, context + ((opt::ref_k - opt::k) / 2), opt::k);
+      kmer[opt::k] = '\0';
+      bf.increment(kmer, counter);
+      ref_bf.increment(kmer, counter);
+    }
+  }
+}
 
 int main(int argc, char *argv[]) {
   hts_set_log_level(HTS_LOG_OFF);
@@ -151,10 +175,10 @@ int main(int argc, char *argv[]) {
   int l;
   while ((l = kseq_read(reference)) >= 0) {
     std::string id = reference->name.s;
-    if(id.compare(0,3,"chr") == 0) {
+    if (id.compare(0, 3, "chr") == 0) {
       id = id.substr(3);
     }
-    std::string seq (reference->seq.s);
+    std::string seq(reference->seq.s);
     refs[id] = seq;
   }
 
@@ -167,13 +191,14 @@ int main(int argc, char *argv[]) {
   std::vector<std::string> used_seq_names;
   VB vb(opt::k, opt::error_rate);
   std::string last_seq_name = "";
+  std::vector<std::thread> thrv;
 
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
     bcf_unpack(vcf_record, BCF_UN_STR);
     Variant v(vcf_header, vcf_record, opt::pop);
 
     // In the first iteration, we set last_seq_name
-    if(last_seq_name.size() == 0) {
+    if (last_seq_name.size() == 0) {
       last_seq_name = v.seq_name;
       used_seq_names.push_back(last_seq_name);
     }
@@ -195,10 +220,19 @@ int main(int argc, char *argv[]) {
        * 3. clear block
        * 4. set new reference
        ***/
-      VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-      add_kmers_to_bf(bf, ref_bf, kmers);
-      vb.clear();
-      if(last_seq_name != v.seq_name) {
+      if (thrv.size() >= opt::nThreads) {
+        for (auto &t : thrv) {
+          t.join();
+        }
+        thrv.clear();
+      }
+      thrv.push_back(thread(extract_kmers_p, std::move(vb), std::ref(bf),
+                            std::ref(ref_bf), std::ref(refs[last_seq_name])));
+      // VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
+      // add_kmers_to_bf(bf, ref_bf, kmers);
+      // vb.clear();
+      vb = VB(opt::k, opt::error_rate);
+      if (last_seq_name != v.seq_name) {
         last_seq_name = v.seq_name;
         used_seq_names.push_back(last_seq_name);
       }
@@ -211,9 +245,14 @@ int main(int argc, char *argv[]) {
      * 2. add k-mers to BF
      * 3. clear block
      ***/
-    VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-    add_kmers_to_bf(bf, ref_bf, kmers);
-    vb.clear();
+    thrv.push_back(thread(extract_kmers_p, std::move(vb), std::ref(bf),
+                          std::ref(ref_bf), std::ref(refs[last_seq_name])));
+  }
+  if (thrv.size() >= 0) {
+    for (auto &t : thrv) {
+      t.join();
+    }
+    thrv.clear();
   }
 
   bcf_hdr_destroy(vcf_header);
@@ -226,7 +265,7 @@ int main(int argc, char *argv[]) {
   pelapsed("BF creation complete");
 
   if (opt::strict_mode) {
-    for(const auto &seq_name : used_seq_names) {
+    for (const auto &seq_name : used_seq_names) {
       std::string reference = refs[seq_name];
       std::string ref_ksub(reference, (opt::ref_k - opt::k) / 2, opt::k);
       std::string context(reference, 0, opt::ref_k);
@@ -251,30 +290,37 @@ int main(int argc, char *argv[]) {
   // STEP 2: test variants present in read sample
   uint32 klen, mode, min_counter, pref_len, sign_len, min_c, counter;
   uint64 tot_kmers, max_c;
-  kmer_db.Info(klen, mode, min_counter, pref_len, sign_len, min_c, max_c, tot_kmers);
+  kmer_db.Info(klen, mode, min_counter, pref_len, sign_len, min_c, max_c,
+               tot_kmers);
   CKmerAPI kmer_obj(klen);
 
   // double kmer_sum = 0.0;
   // double kmer_sum2 = 0.0;
   // double kmer_n = 0.0;
 
-  char context[opt::ref_k + 1];
+  std::vector<pair<CKmerAPI, uint32>> kmer_objs;
   while (kmer_db.ReadNextKmer(kmer_obj, counter)) {
-    // if(counter >= opt::min_coverage) {
-    // ++kmer_n;
-    // kmer_sum += counter;
-    // kmer_sum2 += counter*counter;
-    kmer_obj.to_string(context);
-    transform(context, context + opt::ref_k, context, ::toupper);
-    if (!context_bf.test_key(context)) {
-      char kmer[opt::k + 1];
-      strncpy(kmer, context + ((opt::ref_k - opt::k) / 2), opt::k);
-      kmer[opt::k] = '\0';
-      bf.increment(kmer, counter);
-      ref_bf.increment(kmer, counter);
+    kmer_objs.push_back(make_pair(kmer_obj, counter));
+    if (kmer_objs.size() >= 1000) {
+      if (thrv.size() >= opt::nThreads) {
+        for (auto &t : thrv) {
+          t.join();
+        }
+        thrv.clear();
+      }
+      thrv.push_back(thread(add_weights, std::move(kmer_objs), std::ref(bf),
+                            std::ref(ref_bf), std::ref(context_bf)));
+      kmer_objs = std::vector<pair<CKmerAPI, uint32>>();
     }
-    // }
   }
+  if (kmer_objs.size() > 0) {
+    thrv.push_back(thread(add_weights, std::move(kmer_objs), std::ref(bf),
+                          std::ref(ref_bf), std::ref(context_bf)));
+  }
+  for (auto &t : thrv) {
+    t.join();
+  }
+  thrv.clear();
 
   // float kmer_mean = kmer_sum / kmer_n;
   // float kmer_ds = sqrt((kmer_sum2 - kmer_sum*kmer_sum / kmer_n) / kmer_n);
@@ -299,7 +345,7 @@ int main(int argc, char *argv[]) {
     Variant v(vcf_header, vcf_record, opt::pop);
 
     // In the first iteration, we set last_seq_name
-    if(last_seq_name.size() == 0)
+    if (last_seq_name.size() == 0)
       last_seq_name = v.seq_name;
 
     // In this step, we must consider the variants not present in the
@@ -321,11 +367,11 @@ int main(int argc, char *argv[]) {
        * 5. set new reference
        ***/
       VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-      set_coverages(bf, ref_bf, vb, kmers/*, cap */);
+      set_coverages(bf, ref_bf, vb, kmers /*, cap */);
       vb.genotype(opt::max_coverage);
       vb.output_variants(opt::verbose);
       vb.clear();
-      if(last_seq_name != v.seq_name)
+      if (last_seq_name != v.seq_name)
         last_seq_name = v.seq_name;
     }
     vb.add_variant(v);
@@ -338,7 +384,7 @@ int main(int argc, char *argv[]) {
      * 4. clear block
      ***/
     VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-    set_coverages(bf, ref_bf, vb, kmers/*, cap*/);
+    set_coverages(bf, ref_bf, vb, kmers /*, cap*/);
     vb.genotype(opt::max_coverage);
     vb.output_variants(opt::verbose);
     vb.clear();
