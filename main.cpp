@@ -36,7 +36,7 @@ KSEQ_INIT(gzFile, gzread)
 /**
  * Method to add kmers to the bloom filter
  **/
-void add_kmers_to_bf(BF &bf, BF &ref_bf, const VK_GROUP &kmers) {
+void add_kmers_to_bf(BF &bf, KMAP &ref_bf, const VK_GROUP &kmers) {
   for (const auto &v : kmers) {
     // For each variant
     for (const auto &p : v.second) {
@@ -60,7 +60,7 @@ void add_kmers_to_bf(BF &bf, BF &ref_bf, const VK_GROUP &kmers) {
  * variants of a var_block. It uses the coverages stored in the bloom
  * filters/map.
  **/
-void set_coverages(BF &bf, BF &ref_bf, VB &vb, const VK_GROUP &kmers/*, const float &cap*/) {
+void set_coverages(BF &bf, KMAP &ref_bf, VB &vb, const VK_GROUP &kmers/*, const float &cap*/) {
   for (const auto &var : kmers) {
     // For each variant
     Variant v = vb.get_variant(var.first);
@@ -160,8 +160,7 @@ int main(int argc, char *argv[]) {
 
   // STEP 1: add VCF kmers to bloom filter
   BF bf(opt::bf_size);
-  BF ref_bf(opt::bf_size);
-  // KMAP ref_bf;
+  KMAP ref_bf;
   BF context_bf(opt::bf_size);
 
   std::vector<std::string> used_seq_names;
@@ -221,7 +220,6 @@ int main(int argc, char *argv[]) {
   bcf_close(vcf);
 
   bf.switch_mode();
-  ref_bf.switch_mode();
 
   pelapsed("BF creation complete");
 
@@ -321,7 +319,7 @@ int main(int argc, char *argv[]) {
        * 5. set new reference
        ***/
       VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-      set_coverages(bf, ref_bf, vb, kmers/*, cap */);
+      set_coverages(bf, ref_bf, vb, kmers);
       vb.genotype(opt::max_coverage);
       vb.output_variants(opt::verbose);
       vb.clear();
@@ -338,7 +336,7 @@ int main(int argc, char *argv[]) {
      * 4. clear block
      ***/
     VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-    set_coverages(bf, ref_bf, vb, kmers/*, cap*/);
+    set_coverages(bf, ref_bf, vb, kmers);
     vb.genotype(opt::max_coverage);
     vb.output_variants(opt::verbose);
     vb.clear();
