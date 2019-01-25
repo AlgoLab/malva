@@ -120,15 +120,23 @@ struct Variant {
     for (int i = 0; i < n_individuals; ++i) {
       int32_t *curr_gt = gt_arr + i * ploidy;
       // Here, I'm assuming ploidy = 2. Otherwise, loop til ploidy
-      genotypes.push_back(
-          std::make_pair(bcf_gt_allele(curr_gt[0]), bcf_gt_allele(curr_gt[1])));
-      if (bcf_gt_allele(curr_gt[0]) > 0 or bcf_gt_allele(curr_gt[1]) > 0)
+      int all_1;
+      int all_2;
+      bool is_phased = false;
+      if (curr_gt[1] == bcf_int32_vector_end) {
+        all_1 = bcf_gt_allele(curr_gt[0]);
+        all_2 = bcf_gt_allele(curr_gt[0]);
+      } else {
+        all_1 = bcf_gt_allele(curr_gt[0]);
+        all_2 = bcf_gt_allele(curr_gt[1]);
+        if (bcf_gt_is_phased(curr_gt[1]))
+          // this works, but I'm not 100% sure it's sufficient
+          is_phased = true;
+      }
+      genotypes.push_back(std::make_pair(all_1, all_2));
+      if (all_1 > 0 or all_2 > 0)
         positive_samples.push_back(i);
-      if (bcf_gt_is_phased(curr_gt[1]))
-        // this works, but I'm not 100% sure it's sufficient
-        phasing.push_back(true);
-      else
-        phasing.push_back(false);
+      phasing.push_back(is_phased);
     }
     free(gt_arr);
   }
