@@ -68,29 +68,32 @@ void set_coverages(BF &bf, KMAP &ref_bf, VB &vb, const VK_GROUP &kmers/*, const 
       // For each allele of the variant, we can have:
       //  - a single list of multiple kmers (ie allele is longer than k)
       //  - multiple (>=1) lists of length 1
-      // In both the cases, we take as allele coverage the mean of the
-      // coverages
+      // In the first, we take as allele coverage the mean, in the latter, the sum
       float allele_cov = 0;
-      for (const auto &Ks : p.second) {
-        // For each list of kmers of the allele
-        // uint n = 0;
+      if(p.second.size() == 1) {
+        // mean
         uint w = 0;
-        for (const auto &kmer : Ks) {
-          if(p.first == 0) {
-            // if(ref_bf.get_times(kmer.c_str()) > 1)
-            //   w = 0;
-            // else
-              w = ref_bf.get_count(kmer.c_str());
-          } else {
-            // if(bf.get_times(kmer.c_str()) > 1)
-            //   w = 0;
-            // else
-              w = bf.get_count(kmer.c_str());
+        int n = 0;
+        for (const auto &kmer : p.second[0]) {
+          if(p.first == 0)
+            w = ref_bf.get_count(kmer.c_str());
+          else
+            w = bf.get_count(kmer.c_str());
+          if(w>0) {
+            allele_cov = (allele_cov * n + w) / (n + 1);
+            ++n;
           }
-          // // w = std::min((float)w, cap+1);
-          if(w>0 /* && w <= cap+1 */) {
-            // allele_cov = (allele_cov * n + w) / (n + 1);
-            // ++n;
+        }
+      } else {
+        // For each list of kmers of the allele
+        for (const auto &Ks : p.second) {
+          uint w = 0;
+          // sum
+          for (const auto &kmer : Ks) {
+            if(p.first == 0)
+              w = ref_bf.get_count(kmer.c_str());
+            else
+              w = bf.get_count(kmer.c_str());
             allele_cov += w;
           }
         }
@@ -230,7 +233,7 @@ int main(int argc, char *argv[]) {
       std::string context(reference, 0, opt::ref_k);
       transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
       transform(context.begin(), context.end(), context.begin(), ::toupper);
-      if (bf.test_key(ref_ksub.c_str()) && !ref_bf.test_key(ref_ksub.c_str()))
+      if (bf.test_key(ref_ksub.c_str()))
         context_bf.add_key(context.c_str());
       for (uint p = opt::ref_k; p < reference.size(); ++p) {
         char c1 = toupper(reference[p]);
@@ -239,12 +242,14 @@ int main(int argc, char *argv[]) {
         char c2 = toupper(reference[p - (opt::ref_k - opt::k) / 2]);
         ref_ksub.erase(0, 1);
         ref_ksub += c2;
-        if (bf.test_key(ref_ksub.c_str()) && !ref_bf.test_key(ref_ksub.c_str()))
+        if (bf.test_key(ref_ksub.c_str()))
           context_bf.add_key(context.c_str());
       }
     }
     pelapsed("Reference BF creation complete");
   }
+
+  context_bf.switch_mode();
 
   // STEP 2: test variants present in read sample
   uint32 klen, mode, min_counter, pref_len, sign_len, min_c, counter;
@@ -252,31 +257,18 @@ int main(int argc, char *argv[]) {
   kmer_db.Info(klen, mode, min_counter, pref_len, sign_len, min_c, max_c, tot_kmers);
   CKmerAPI kmer_obj(klen);
 
-  // double kmer_sum = 0.0;
-  // double kmer_sum2 = 0.0;
-  // double kmer_n = 0.0;
-
   char context[opt::ref_k + 1];
   while (kmer_db.ReadNextKmer(kmer_obj, counter)) {
-    // if(counter >= opt::min_coverage) {
-    // ++kmer_n;
-    // kmer_sum += counter;
-    // kmer_sum2 += counter*counter;
     kmer_obj.to_string(context);
     transform(context, context + opt::ref_k, context, ::toupper);
+    char kmer[opt::k + 1];
+    strncpy(kmer, context + ((opt::ref_k - opt::k) / 2), opt::k);
+    kmer[opt::k] = '\0';
+    ref_bf.increment(kmer, counter);
     if (!context_bf.test_key(context)) {
-      char kmer[opt::k + 1];
-      strncpy(kmer, context + ((opt::ref_k - opt::k) / 2), opt::k);
-      kmer[opt::k] = '\0';
       bf.increment(kmer, counter);
-      ref_bf.increment(kmer, counter);
     }
-    // }
   }
-
-  // float kmer_mean = kmer_sum / kmer_n;
-  // float kmer_ds = sqrt((kmer_sum2 - kmer_sum*kmer_sum / kmer_n) / kmer_n);
-  // float cap = kmer_mean + 2*kmer_ds;
 
   pelapsed("BF weights created");
 
