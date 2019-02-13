@@ -1,16 +1,14 @@
-# MALVA: Mapping-free ALternate-allele detection of known VAriants
+# MALVA: genotyping by Mapping-free ALternate-allele detection of known VAriants
 
-#### !!! This is the development branch !!!
-
-Detect known alterante alleles directly from a sample of reads.
+Alignment-free genotyping of a set of known variants (in VCF format) directly from a sample of reads.
 
 ## Dependencies
 
 MALVA requires the following libraries and tools:
 
 * [sdsl-lite v2.1.1](https://github.com/simongog/sdsl-lite/tree/v2.1.1)
-* [KMC v3](https://github.com/refresh-bio/KMC/tree/v3.0.0)
-* [htslib v1.8](https://github.com/samtools/htslib/tree/1.8)
+* [KMC v3.1.0](https://github.com/refresh-bio/KMC/tree/v3.1.0)
+* [htslib v1.9](https://github.com/samtools/htslib/tree/1.9)
 
 This repository comes with them as submodules so you don't need to clone them separately.
 
@@ -26,8 +24,6 @@ cd malva
 ```
 
 If you have KMC3, sdsl-lite, and htslib already installed you can skip the following commands.
-
-**Please Note**: KMC seems to not compile using `g++-7` under Ubuntu; please switch to `g++-6` in this step to avoid compilation errors.
 
 ```bash
 cd sdsl-lite/build
@@ -49,7 +45,7 @@ make
 ## Usage
 
 ```
-./malva [-k ksize] [-m min_coverage] [-x max_coverage] <reference> <variants> <kmc_output_prefix>
+./malva <reference> <variants> <kmc_output_prefix>
 ```
 
 ## Authors
