@@ -205,7 +205,7 @@ public:
             ldouble truth = v->coverages[g1];
             ldouble error = total_sum - truth;
             posterior = binomial(truth + error, truth) *
-              pow(1 - error_rate, truth) * pow(error_rate, error);
+              pow(1 - error_rate, truth) * pow(error_rate/(v->coverages.size() - 1), error);
           } else {
             prior = 2 * v->frequencies[g1] * v->frequencies[g2];
             ldouble truth1 = v->coverages[g1];
@@ -214,7 +214,7 @@ public:
             posterior = binomial(truth1 + truth2 + error, truth1 + truth2) *
               binomial(truth1 + truth2, truth1) *
               pow((1 - error_rate) / 2, truth1) *
-              pow((1 - error_rate) / 2, truth2) * pow(error_rate, error);
+              pow((1 - error_rate) / 2, truth2) * pow(error_rate/(v->coverages.size() - 2), error);
           }
 
           ldouble prob = prior * posterior;
