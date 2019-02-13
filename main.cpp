@@ -65,6 +65,27 @@ void set_coverages(BF &bf, KMAP &ref_bf, VB &vb, const VK_GROUP &kmers/*, const 
     // For each variant
     Variant v = vb.get_variant(var.first);
     for (const auto &p : var.second) {
+      float allele_cov = 0;
+      for (const auto &Ks : p.second) {
+        float curr_cov = 0;
+        int n = 0; // Number of kmers in the signature
+        for (const auto &kmer : Ks) {
+          int w = 0;
+          if(p.first == 0)
+            w = ref_bf.get_count(kmer.c_str());
+          else
+            w = bf.get_count(kmer.c_str());
+          if(w>0) { //maybe useless
+            curr_cov = (curr_cov * n + w) / (n + 1);
+            ++n;
+          }
+        }
+        if(curr_cov > allele_cov)
+          allele_cov = curr_cov;
+      }
+      // we can now set the allele coverage
+      vb.set_variant_coverage(var.first, p.first, allele_cov);
+      /** OLD: SUM and MEAN
       // For each allele of the variant, we can have:
       //  - a single list of multiple kmers (ie allele is longer than k)
       //  - multiple (>=1) lists of length 1
@@ -98,8 +119,7 @@ void set_coverages(BF &bf, KMAP &ref_bf, VB &vb, const VK_GROUP &kmers/*, const 
           }
         }
       }
-      // we can now set the allele coverage
-      vb.set_variant_coverage(var.first, p.first, allele_cov);
+      **/
     }
   }
 }
