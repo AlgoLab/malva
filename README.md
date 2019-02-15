@@ -88,11 +88,11 @@ Positional arguments:
 ```
 
 ## Example
-After you compile `malva`, you can test it on the example data provided:
+After you compile `malva`, you can test it on the example data provided (note that we set the Bloom filter size to 1GB):
 ```
 cd example
 tar xvfz data.tar.gz
-../MALVA chr20.fa chr20.vcf chr20.sample.fa > chr20.genotyped.vcf
+../MALVA chr20.fa chr20.vcf chr20.sample.fa -b 1 > chr20.genotyped.vcf
 ```
 
 This should take less than 1 minute to complete. You can also verify
