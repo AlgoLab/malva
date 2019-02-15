@@ -4,40 +4,46 @@ SCRIPT_NAME=$(basename $0)
 BIN_NAME="malva"
 EXECUTABLE="$(dirname $0)/${BIN_NAME}"
 KMC_BIN="$(dirname $0)/KMC/bin/kmc"
+
 DEFAULT_KSIZE=35
 DEFAULT_REF_KSIZE=43
-DEFAULT_COVERAGE=2
+DEFAULT_ERR_RATE=0.001
+DEFAULT_POP="EUR"
+DEFAULT_MAX_COV=200
+DEFAULT_BF_SIZE=8
+DEFAULT_MAX_MEM=4
 
 USAGE=$'\nUsage: '"${SCRIPT_NAME}"' [-k ksize] [-r Ksize] [-c min_coverage] [-s sample_coverage] [-n read_length] <reference> <variants> <sample> <out_vcf>
-Preprocesses the VCF file and calls '"${BIN_NAME}"' and outputs a VCF containing the
-known variants in <sample>.
-
-Ideally this script will be depracated soon.
+Preprocesses the VCF file and calls '"${BIN_NAME}"' and outputs to STDOUT a VCF containing the known variants in <sample>.
 
 Arguments:
      -h              print this help and exit
-     -k              kmers length (default:'"${DEFAULT_KSIZE}"')
-     -r              reference kmers length (default:'"${DEFAULT_REF_KSIZE}"')
-     -l              loose mode
+     -k              size of the kmers to index (default:'"${DEFAULT_KSIZE}"')
+     -r              size of the reference kmers to index (default:'"${DEFAULT_REF_KSIZE}"')
+     -e              expected sample error rate (default:'"${DEFAULT_ERR_RATE}"')
+     -p              population to consider while reading input VCF (default:'"${DEFAULT_POP}"')
+     -c              maximum coverage for variant alleles (default:'"${DEFAULT_MAX_COV}"')
+     -b              bloom filter size in GB (default:'"${DEFAULT_BF_SIZE}"')
+     -m              max amount of RAM in GB - KMC parameter (default:'"${DEFAULT_MAX_MEM}"')
 
 Positional arguments:
-     <reference>     reference file in FASTA/FASTQ format
+     <reference>     reference file in FASTA format
      <variants>      variants file in VCF format
      <sample>        sample file in FASTA/FASTQ format
-     <out_vcf>       path to output VCF
 '
 
 reference=""
-vcf_file=""
+vcf=""
 sample=""
-out_vcf=""
-loose=""
-
 k=${DEFAULT_KSIZE}
 refk=${DEFAULT_REF_KSIZE}
-MAX_MEMORY=3
+erate=${DEFAULT_ERR_RATE}
+pop=${DEFAULT_POP}
+maxcov=${DEFAULT_MAX_COV}
+bfsize=${DEFAULT_BF_SIZE}
+maxmem=${DEFAULT_MAX_MEM}
 
-while getopts "k:r:lh" flag; do
+while getopts "k:r:e:p:c:b:m:h" flag; do
     case "${flag}" in
         h) $(>&2 echo "${USAGE}")
            exit 1
@@ -46,12 +52,20 @@ while getopts "k:r:lh" flag; do
            ;;
         r) refk=${OPTARG}
            ;;
-        l) loose="-l"
+        e) erate=${OPTARG}
+           ;;
+        p) pop=${OPTARG}
+           ;;
+        c) maxcov=${OPTARG}
+           ;;
+        b) bfsize=${OPTARG}
+           ;;
+        m) maxmem=${OPTARG}
            ;;
     esac
 done
 
-if [[ $# -lt $((${OPTIND} + 3)) ]]
+if [[ $# -lt $((${OPTIND} + 2)) ]]
 then
     (>&2 echo "ERROR: Wrong number of arguments.")
     (>&2 echo "")
@@ -62,27 +76,23 @@ fi
 reference=${@:$OPTIND:1}
 vcf_file=${@:$OPTIND+1:1}
 sample=${@:$OPTIND+2:1}
-out_vcf=${@:$OPTIND+3:1}
 
-out_dir=$(dirname ${out_vcf})
-uniq_name=$(basename ${sample})_k${k}_K${refk}
-KMC_DEFAULT_DIR="${out_dir}/${uniq_name}.kmc_tmp"
-kmc_out_file="${out_dir}/${uniq_name}.kmercount"
+kmc_tmp_dir=${sample}_malva_kmc_${refk}_tmp
+kmc_out_prefix=${sample}_malva${refk}.kmercount
 
-mkdir -p ${KMC_DEFAULT_DIR}
-if [ ! -f ${kmc_out_file}.kmc_pre ] && [ ! -f ${kmc_out_file}.kmc_suf ]
+mkdir -p ${kmc_tmp_dir}
+if [ ! -f ${kmc_out_prefix}.kmc_pre ] && [ ! -f ${kmc_out_prefix}.kmc_suf ]
 then
     (>&2 echo  "[${SCRIPT_NAME}] Running KMC")
-    ${KMC_BIN} -m${MAX_MEMORY} -k${refk} -t1 -fm ${sample} ${kmc_out_file} ${KMC_DEFAULT_DIR} &> ${kmc_out_file}.log
+    ${KMC_BIN} -m${maxmem} -k${refk} -t1 -fm ${sample} ${kmc_out_prefix} ${kmc_tmp_dir} &> ${kmc_out_file}.log
 else
     (>&2 echo  "[${SCRIPT_NAME}] Found KMC output")
 fi
 
 (>&2 echo "[${SCRIPT_NAME}] Running ${BIN_NAME}")
-${EXECUTABLE} -n 150 -e 0.001 ${loose} -k ${k} -r ${refk} ${reference} ${vcf_file} ${kmc_out_file} > ${out_vcf}
-#-t ${threads_num}
+${EXECUTABLE} -k ${k} -r ${refk} -e ${erate} -p ${pop} -c ${maxcov} -b ${bfsize}  ${reference} ${vcf_file} ${kmc_out_prefix}
 
 (>&2 echo "[${SCRIPT_NAME}] Cleaning up")
-rm -rf ${KMC_DEFAULT_DIR}
+rm -rf ${kmc_tmp_dir}
 
 exit 0
