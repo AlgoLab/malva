@@ -10,7 +10,7 @@ DEFAULT_REF_KSIZE=43
 DEFAULT_ERR_RATE=0.001
 DEFAULT_POP="EUR"
 DEFAULT_MAX_COV=200
-DEFAULT_BF_SIZE=4
+DEFAULT_BF_SIZE=2
 DEFAULT_MAX_MEM=4
 
 USAGE=$'\nUsage: '"${SCRIPT_NAME}"' [-k ksize] [-r Ksize] [-c min_coverage] [-s sample_coverage] [-n read_length] <reference> <variants> <sample> <out_vcf>
