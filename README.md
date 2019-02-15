@@ -92,16 +92,16 @@ After you compile `malva`, you can test it on the example data provided:
 ```
 cd example
 tar xvfz data.tar.gz
-../MALVA chr20.fa chr20.small.vcf chr20.sample.fa > chr20.genotyped.vcf
+../MALVA chr20.fa chr20.vcf chr20.sample.fa > chr20.genotyped.vcf
 ```
 
 This should take less than 1 minute to complete. You can also verify
 the correcteness of the output VCF `chr20.genotyped.vcf` by comparing
-it with `chr20.malva.vcf`.
+it with [chr20.malva.vcf](https://github.com/AlgoLab/malva/blob/master/example/chr20.malva.vcf).
 
 ### Note
 - The tool has been tested only on 64bit Linux system.
-- The current release is optimized for working with the VCF files provided by the 1000GenomesProject
+- The current release is optimized for working with the VCF files provided by the 1000GenomesProject (it uses the value encoded as `*_AF` in the `INFO` field to compute the _a priori_ frequency of each allele). If your VCF file uses a different format, let us know
 
 ## Authors
 
