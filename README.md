@@ -82,9 +82,9 @@ Arguments:
      -m              max amount of RAM in GB - KMC parameter (default:4)
 
 Positional arguments:
-    <reference>     reference file in FASTA format
-    <variants>      variants file in VCF format
-    <sample>        sample file in FASTA/FASTQ format
+    <reference>     reference file in FASTA format (can be gzipped)
+    <variants>      variants file in VCF format (can be gzipped)
+    <sample>        sample file in FASTA/FASTQ format (can be gzipped)
 ```
 
 ## Example
