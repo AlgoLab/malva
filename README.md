@@ -56,8 +56,8 @@ Arguments:
     -b, --bf-size                     bloom filter size in GB (default:4)
 
 Positional arguments:
-    <reference>                       reference file in FASTA format
-    <variants>                        variants file in VCF format
+    <reference>                       reference file in FASTA format (may be gzipped)
+    <variants>                        variants file in VCF format (may be gzipped)
     <kmc_output_prefix>               prefix of KMC output
 ```
 
@@ -78,7 +78,7 @@ Arguments:
      -e              expected sample error rate (default:0.001)
      -p              population to consider while reading input VCF (default:EUR)
      -c              maximum coverage for variant alleles (default:200)
-     -b              bloom filter size in GB (default:8)
+     -b              bloom filter size in GB (default:4)
      -m              max amount of RAM in GB - KMC parameter (default:4)
 
 Positional arguments:
