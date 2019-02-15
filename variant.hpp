@@ -176,24 +176,6 @@ struct Variant {
     // maybe we can add some control here
     computed_gts.push_back(gt);
   }
-
-  /**
-  void normalize_coverages() {
-    float total_coverage = std::accumulate(coverages.begin(), coverages.end(), 0.0);
-    if(total_coverage != 0) {
-      for(uint i=0; i<coverages.size(); ++i) {
-        coverages[i] = coverages[i] / total_coverage;
-      }
-    }
-  }
-
-  void clean_coverages() {
-    for(uint i=0; i<coverages.size(); ++i) {
-      if(coverages[i] > 100)
-        coverages[i] = 0;
-    }
-  }
-  **/
 };
 
 #endif

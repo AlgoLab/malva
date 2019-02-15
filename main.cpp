@@ -85,41 +85,6 @@ void set_coverages(BF &bf, KMAP &ref_bf, VB &vb, const VK_GROUP &kmers/*, const 
       }
       // we can now set the allele coverage
       vb.set_variant_coverage(var.first, p.first, allele_cov);
-      /** OLD: SUM and MEAN
-      // For each allele of the variant, we can have:
-      //  - a single list of multiple kmers (ie allele is longer than k)
-      //  - multiple (>=1) lists of length 1
-      // In the first, we take as allele coverage the mean, in the latter, the sum
-      float allele_cov = 0;
-      if(p.second.size() == 1) {
-        // mean
-        uint w = 0;
-        int n = 0;
-        for (const auto &kmer : p.second[0]) {
-          if(p.first == 0)
-            w = ref_bf.get_count(kmer.c_str());
-          else
-            w = bf.get_count(kmer.c_str());
-          if(w>0) {
-            allele_cov = (allele_cov * n + w) / (n + 1);
-            ++n;
-          }
-        }
-      } else {
-        // For each list of kmers of the allele
-        for (const auto &Ks : p.second) {
-          uint w = 0;
-          // sum
-          for (const auto &kmer : Ks) {
-            if(p.first == 0)
-              w = ref_bf.get_count(kmer.c_str());
-            else
-              w = bf.get_count(kmer.c_str());
-            allele_cov += w;
-          }
-        }
-      }
-      **/
     }
   }
 }
@@ -246,28 +211,26 @@ int main(int argc, char *argv[]) {
 
   pelapsed("BF creation complete");
 
-  if (opt::strict_mode) {
-    for(const auto &seq_name : used_seq_names) {
-      std::string reference = refs[seq_name];
-      std::string ref_ksub(reference, (opt::ref_k - opt::k) / 2, opt::k);
-      std::string context(reference, 0, opt::ref_k);
-      transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
-      transform(context.begin(), context.end(), context.begin(), ::toupper);
+  for(const auto &seq_name : used_seq_names) {
+    std::string reference = refs[seq_name];
+    std::string ref_ksub(reference, (opt::ref_k - opt::k) / 2, opt::k);
+    std::string context(reference, 0, opt::ref_k);
+    transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
+    transform(context.begin(), context.end(), context.begin(), ::toupper);
+    if (bf.test_key(ref_ksub.c_str()))
+      context_bf.add_key(context.c_str());
+    for (uint p = opt::ref_k; p < reference.size(); ++p) {
+      char c1 = toupper(reference[p]);
+      context.erase(0, 1);
+      context += c1;
+      char c2 = toupper(reference[p - (opt::ref_k - opt::k) / 2]);
+      ref_ksub.erase(0, 1);
+      ref_ksub += c2;
       if (bf.test_key(ref_ksub.c_str()))
         context_bf.add_key(context.c_str());
-      for (uint p = opt::ref_k; p < reference.size(); ++p) {
-        char c1 = toupper(reference[p]);
-        context.erase(0, 1);
-        context += c1;
-        char c2 = toupper(reference[p - (opt::ref_k - opt::k) / 2]);
-        ref_ksub.erase(0, 1);
-        ref_ksub += c2;
-        if (bf.test_key(ref_ksub.c_str()))
-          context_bf.add_key(context.c_str());
-      }
     }
-    pelapsed("Reference BF creation complete");
   }
+  pelapsed("Reference BF creation complete");
 
   context_bf.switch_mode();
 

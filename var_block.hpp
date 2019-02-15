@@ -186,15 +186,6 @@ public:
 
       ldouble max_prob = 0.0;
       std::string best_geno = "0/0";
-      // !!! We shouldn't base our prediction only on the a priori !!!
-      // for (uint g = 0; g < v.frequencies.size(); ++g) {
-      //   if (v.frequencies[g] == 1.0) {
-      //     gt = std::make_pair(to_string(g) + "/" + to_string(g), 1);
-      //     vb.add_variant_genotype(vidx, gt);
-      //     return gt;
-      //   }
-      // }
-
       for (uint g1 = 0; g1 < v->coverages.size(); ++g1) {
         for (uint g2 = g1; g2 < v->coverages.size(); ++g2) {
           ldouble prior;
