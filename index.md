@@ -1,5 +1,3 @@
----
----
 # MALVA: genotyping by Mapping-free ALternate-allele detection of known VAriants
 
 Alignment-free genotyping of a set of known variants (in VCF format) directly from a sample of reads.
@@ -37,7 +35,7 @@ make
 cd ..
 ```
 
-You can now compile `malva` from the root of you local copy of the repository simply by running make.
+You can now compile MALVA from the root of you local copy of the repository simply by running make.
 
 ```bash
 cd <path-to-malva-local-repo>
@@ -46,7 +44,7 @@ make
 
 ## Usage
 ```
-Usage: malva [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] <reference> <variants> <kmc_output_prefix>
+Usage: malva-geno [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] <reference> <variants> <kmc_output_prefix>
 
 Arguments:
     -h, --help                        display this help and exit
