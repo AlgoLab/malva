@@ -67,7 +67,7 @@ cd <path-to-malva-local-repo>
 ./KMC/bin/KMC -k <REF-KMER-SIZE> <sample> <kmc_output_prefix>
 ```
 
-Anyway, we provide a bash script that you can use to run the full pipeline `KMC+MALVA`:
+Anyway, we provide a bash script that you can use to run the full pipeline `KMC+malva-geno`:
 ```
 Usage: MALVA [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] <reference> <variants> <sample>
 
