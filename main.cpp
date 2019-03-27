@@ -22,13 +22,13 @@
 #include "var_block.hpp"
 #include "kmap.hpp"
 
-auto start_t = chrono::high_resolution_clock::now();
+auto start_t = std::chrono::high_resolution_clock::now();
 
-void pelapsed(const string &s = "") {
-  auto now_t = chrono::high_resolution_clock::now();
-  cerr << "[malva/" << s << "] Time elapsed "
-       << chrono::duration_cast<chrono::milliseconds>(now_t - start_t).count()
-       << endl;
+void pelapsed(const std::string &s = "") {
+  auto now_t = std::chrono::high_resolution_clock::now();
+  std::cerr << "[malva-geno/" << s << "] Time elapsed "
+       << std::chrono::duration_cast<std::chrono::milliseconds>(now_t - start_t).count()/1000 << "s"
+       << std::endl;
 }
 
 KSEQ_INIT(gzFile, gzread)
@@ -215,8 +215,8 @@ int main(int argc, char *argv[]) {
     std::string reference = refs[seq_name];
     std::string ref_ksub(reference, (opt::ref_k - opt::k) / 2, opt::k);
     std::string context(reference, 0, opt::ref_k);
-    transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
-    transform(context.begin(), context.end(), context.begin(), ::toupper);
+    std::transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
+    std::transform(context.begin(), context.end(), context.begin(), ::toupper);
     if (bf.test_key(ref_ksub.c_str()))
       context_bf.add_key(context.c_str());
     for (uint p = opt::ref_k; p < reference.size(); ++p) {
@@ -243,7 +243,7 @@ int main(int argc, char *argv[]) {
   char context[opt::ref_k + 1];
   while (kmer_db.ReadNextKmer(kmer_obj, counter)) {
     kmer_obj.to_string(context);
-    transform(context, context + opt::ref_k, context, ::toupper);
+    std::transform(context, context + opt::ref_k, context, ::toupper);
     char kmer[opt::k + 1];
     strncpy(kmer, context + ((opt::ref_k - opt::k) / 2), opt::k);
     kmer[opt::k] = '\0';
@@ -324,7 +324,7 @@ int main(int argc, char *argv[]) {
   kseq_destroy(reference);
   gzclose(fasta_in);
 
-  cout.flush();
+  std::cout.flush();
 
   pelapsed("Execution completed");
 

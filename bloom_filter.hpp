@@ -45,7 +45,7 @@ private:
     uint k = strlen(kmer);
     char ckmer[k + 1];
     _canonical(kmer, ckmer, k);
-    array<uint64_t, 2> hashes;
+    std::array<uint64_t, 2> hashes;
     MurmurHash3_x64_128(ckmer, k, 0, reinterpret_cast<void *>(&hashes));
     return hashes[0];
   }

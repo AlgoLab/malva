@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT_NAME=$(basename $0)
-BIN_NAME="malva"
+BIN_NAME="malva-geno"
 EXECUTABLE="$(dirname $0)/${BIN_NAME}"
 KMC_BIN="$(dirname $0)/KMC/bin/kmc"
 
@@ -13,8 +13,7 @@ DEFAULT_MAX_COV=200
 DEFAULT_BF_SIZE=4
 DEFAULT_MAX_MEM=4
 
-USAGE=$'\nUsage: '"${SCRIPT_NAME}"' [-k ksize] [-r Ksize] [-c min_coverage] [-s sample_coverage] [-n read_length] <reference> <variants> <sample> <out_vcf>
-Preprocesses the VCF file and calls '"${BIN_NAME}"' and outputs to STDOUT a VCF containing the known variants in <sample>.
+USAGE=$'\nUsage: '"${SCRIPT_NAME}"' [-k ksize] [-r Ksize] [-c min_coverage] [-s sample_coverage] [-n read_length] <reference> <variants> <sample>
 
 Arguments:
      -h              print this help and exit
@@ -46,7 +45,7 @@ maxmem=${DEFAULT_MAX_MEM}
 while getopts "k:r:e:p:c:b:m:h" flag; do
     case "${flag}" in
         h) $(>&2 echo "${USAGE}")
-           exit 1
+           exit 0
            ;;
         k) k=${OPTARG}
            ;;

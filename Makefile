@@ -1,15 +1,13 @@
-#CFLAGS	= -Wno-char-subscripts -g -Wall -O0 -std=c++11 -I. -I./sdsl-lite/build/include -I./htslib/htslib -I./KMC -fopenmp
-CFLAGS	= -Wno-char-subscripts -DNDEBUG -Wall -O3 -std=c++11 -I. -I./sdsl-lite/build/include -I./htslib/htslib -I./KMC -fopenmp
-CXXFLAGS= ${CFLAGS}
-LIBS = -L./sdsl-lite/build/lib -L./sdsl-lite/build/external/libdivsufsort/lib -L./htslib/ -lhts -lz -lsdsl -ldivsufsort -ldivsufsort64
+CXXFLAGS=-Wno-char-subscripts -DNDEBUG -Wall -O3 -std=c++11 -I. -I./sdsl-lite/build/include -I./htslib/htslib -I./KMC -fopenmp
+LIBS=-L./sdsl-lite/build/lib -L./sdsl-lite/build/external/libdivsufsort/lib -L./htslib/ -lhts -lz -lsdsl -ldivsufsort -ldivsufsort64
 
 .PHONY: all
 
-all: malva
+all: malva-geno
 
-malva: main.o MurmurHash3.o \
+malva-geno: main.o MurmurHash3.o \
 						./KMC/kmc_api/kmc_file.o ./KMC/kmc_api/kmer_api.o ./KMC/kmc_api/mmer.o
-	@echo "* Linking malva"
+	@echo "* Linking $@"
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS) $(LDFLAGS)
 
 %.o: %.cpp

@@ -6,7 +6,7 @@
 #include <getopt.h>
 
 static const char *USAGE_MESSAGE =
-  "Usage: malva [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] "
+  "Usage: malva-geno [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] "
   "<reference.fa> <variants.vcf> <kmc_output_prefix>\n"
   "\n"
   "Top notch description of this tool\n"
@@ -92,10 +92,10 @@ void parse_arguments(int argc, char **argv) {
   }
 
   if (argc - optind < 3) {
-    cerr << "malva : missing arguments\n";
+    std::cerr << "malva : missing arguments\n";
     die = true;
   } else if (argc - optind > 3) {
-    cerr << "malva : too many arguments\n";
+    std::cerr << "malva : too many arguments\n";
     die = true;
   }
   if (die) {

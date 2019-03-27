@@ -211,9 +211,9 @@ public:
           ldouble prob = prior * posterior;
           if (prob > max_prob) {
             max_prob = prob;
-            best_geno = to_string(g1) + "/" + to_string(g2);
+            best_geno = std::to_string(g1) + "/" + std::to_string(g2);
           }
-          v->add_genotype(std::make_pair(to_string(g1) + "/" + to_string(g2), prob));
+          v->add_genotype(std::make_pair(std::to_string(g1) + "/" + std::to_string(g2), prob));
         }
       }
     }
