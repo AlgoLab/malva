@@ -112,3 +112,6 @@ it with [chr20.malva.vcf](https://github.com/AlgoLab/malva/blob/master/example/c
 * [Alexander Schönhuth](https://homepages.cwi.nl/~as/)
 
 For inquiries on this software please contact either MP or LD.
+
+## License
+MALVA is distributed under the GPL-3.0-or-later license.
