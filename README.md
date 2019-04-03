@@ -6,16 +6,6 @@
 
 Alignment-free genotyping of a set of known variants (in VCF format) directly from a sample of reads.
 
-## Dependencies
-
-MALVA requires the following libraries and tools:
-
-* [sdsl-lite v2.1.1](https://github.com/simongog/sdsl-lite/tree/v2.1.1)
-* [KMC v3.1.0](https://github.com/refresh-bio/KMC/tree/v3.1.0)
-* [htslib v1.9](https://github.com/samtools/htslib/tree/1.9)
-
-This repository comes with them as submodules so you don't need to clone them separately.
-
 ## Install
 
 `MALVA` is available on bioconda.
@@ -25,6 +15,18 @@ conda create -n malvatest malva
 will create an environment named `malvatest` that includes `MALVA` and its dependencies.
 
 ## Install from source code
+
+### Dependencies
+
+MALVA requires the following libraries and tools:
+
+* [sdsl-lite v2.1.1](https://github.com/simongog/sdsl-lite/tree/v2.1.1)
+* [KMC v3.1.0](https://github.com/refresh-bio/KMC/tree/v3.1.0)
+* [htslib v1.9](https://github.com/samtools/htslib/tree/1.9)
+
+This repository comes with them as submodules so you don't need to clone them separately.
+
+### Download and installation
 
 To download and compile the code run the following commands.
 
