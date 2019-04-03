@@ -1,6 +1,6 @@
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/malva/badges/installer/conda.svg)](https://conda.anaconda.org/bioconda)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/malva/badges/platforms.svg)](https://anaconda.org/bioconda/malva)
-[![Anaconda-Server Badge](https://anaconda.org/bioconda/malva/badges/platforms.svg)](https://anaconda.org/bioconda/malva)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/malva/badges/license.svg)](https://anaconda.org/bioconda/malva)
 
 # MALVA: genotyping by Mapping-free ALternate-allele detection of known VAriants
 
