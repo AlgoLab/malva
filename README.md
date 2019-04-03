@@ -1,3 +1,7 @@
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/malva/badges/installer/conda.svg)](https://conda.anaconda.org/bioconda)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/malva/badges/platforms.svg)](https://anaconda.org/bioconda/malva)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/malva/badges/platforms.svg)](https://anaconda.org/bioconda/malva)
+
 # MALVA: genotyping by Mapping-free ALternate-allele detection of known VAriants
 
 Alignment-free genotyping of a set of known variants (in VCF format) directly from a sample of reads.
@@ -12,7 +16,15 @@ MALVA requires the following libraries and tools:
 
 This repository comes with them as submodules so you don't need to clone them separately.
 
-## Download and Installation
+## Install
+
+`MALVA` is available on bioconda.
+```bash
+conda create -n malvatest malva
+```
+will create an environment named `malvatest` that includes `MALVA` and its dependencies.
+
+## Install from source code
 
 To download and compile the code run the following commands.
 
