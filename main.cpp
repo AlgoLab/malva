@@ -147,6 +147,14 @@ int main(int argc, char *argv[]) {
 
   htsFile *vcf = bcf_open(opt::vcf_path.c_str(), "r");
   bcf_hdr_t *vcf_header = bcf_hdr_read(vcf);
+  int is_file_flag = 0;
+  if(opt::samples != "-")
+    is_file_flag = 1;
+  int set_samples_code = bcf_hdr_set_samples(vcf_header, opt::samples.c_str(), is_file_flag);
+  if(set_samples_code != 0) {
+    std::cerr << "ERROR: VCF samples subset (code: " << set_samples_code << ")" << std::endl;
+    return 1;
+  }
   bcf1_t *vcf_record = bcf_init();
 
   CKMCFile kmer_db;
@@ -178,7 +186,7 @@ int main(int argc, char *argv[]) {
 
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
     bcf_unpack(vcf_record, BCF_UN_STR);
-    Variant v(vcf_header, vcf_record, opt::pop);
+    Variant v(vcf_header, vcf_record, opt::freq_key);
 
     // In the first iteration, we set last_seq_name
     if(last_seq_name.size() == 0) {
@@ -279,18 +287,20 @@ int main(int argc, char *argv[]) {
   // STEP 3: check if variants in vcf are covered enough
   vcf = bcf_open(opt::vcf_path.c_str(), "r");
   vcf_header = bcf_hdr_read(vcf);
+  set_samples_code = bcf_hdr_set_samples(vcf_header, NULL, 0);
   print_cleaned_header(vcf_header);
   bcf_hdr_destroy(vcf_header);
   bcf_close(vcf);
 
   vcf = bcf_open(opt::vcf_path.c_str(), "r");
   vcf_header = bcf_hdr_read(vcf);
+  set_samples_code = bcf_hdr_set_samples(vcf_header, opt::samples.c_str(), is_file_flag);
   vcf_record = bcf_init();
 
   last_seq_name = "";
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
     bcf_unpack(vcf_record, BCF_UN_STR);
-    Variant v(vcf_header, vcf_record, opt::pop);
+    Variant v(vcf_header, vcf_record, opt::freq_key);
 
     // In the first iteration, we set last_seq_name
     if(last_seq_name.size() == 0)

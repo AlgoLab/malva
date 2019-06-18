@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "This script is currently deprecated - use release 1.0.1 (https://github.com/AlgoLab/malva/releases/tag/v1.0.1)"
+exit 0
+
 SCRIPT_NAME=$(basename $0)
 BIN_NAME="malva-geno"
 EXECUTABLE="$(dirname $0)/${BIN_NAME}"

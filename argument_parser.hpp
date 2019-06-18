@@ -36,7 +36,8 @@ static const char *USAGE_MESSAGE =
   "      -k, --kmer-size                   size of the kmers to index (default:35)\n"
   "      -r, --ref-kmer-size               size of the reference kmers to index (default:43)\n"
   "      -e, --error-rate                  expected sample error rate (default:0.001)\n"
-  "      -p, --population                  population to consider while reading input VCF (default:EUR)\n"
+  "      -s, --samples                     file containing the list of (VCF) samples to consider (default:-, i.e. all samples)\n"
+  "      -f, --freq-key                    a priori frequency key in the INFO column of the input VCF (default:AF)\n"
   "      -c, --max-coverage                maximum coverage for variant alleles (default:200)\n"
   "      -b, --bf-size                     bloom filter size in GB (default:4)\n"
   // "      -v, --verbose                     output a detailed VCF (more information in the INFO column)\n"
@@ -47,7 +48,8 @@ namespace opt {
 static uint k = 35;
 static uint ref_k = 43;
 static float error_rate = 0.001;
-static std::string pop = "EUR";
+static std::string samples = "-";
+static std::string freq_key = "AF";
 static uint max_coverage = 200;
 static uint64_t bf_size = ((uint64_t)0b1 << 35);
 static bool verbose = false;
@@ -57,13 +59,14 @@ static std::string vcf_path;
 static std::string kmc_sample_path;
 }
 
-static const char *shortopts = "k:r:e:s:p:c:b:h";
+static const char *shortopts = "k:r:e:s:f:c:b:h";
 
 static const struct option longopts[] = {
     {"kmer-size", required_argument, NULL, 'k'},
     {"ref-kmer-size", required_argument, NULL, 'r'},
     {"error-rate", required_argument, NULL, 'e'},
-    {"population", required_argument, NULL, 'p'},
+    {"freq-key", required_argument, NULL, 'f'},
+    {"samples", required_argument, NULL, 's'},
     {"max-coverage", required_argument, NULL, 'c'},
     {"bf-size", required_argument, NULL, 'b'},
     // {"verbose", no_argument, NULL, 'v'},
@@ -86,8 +89,11 @@ void parse_arguments(int argc, char **argv) {
     case 'e':
       arg >> opt::error_rate;
       break;
-    case 'p':
-      arg >> opt::pop;
+    case 's':
+      arg >> opt::samples;
+      break;
+    case 'f':
+      arg >> opt::freq_key;
       break;
     case 'c':
       arg >> opt::max_coverage;
