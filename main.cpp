@@ -48,8 +48,8 @@ auto start_t = std::chrono::high_resolution_clock::now();
 void pelapsed(const std::string &s = "") {
   auto now_t = std::chrono::high_resolution_clock::now();
   std::cerr << "[malva-geno/" << s << "] Time elapsed "
-       << std::chrono::duration_cast<std::chrono::milliseconds>(now_t - start_t).count()/1000 << "s"
-       << std::endl;
+	    << std::chrono::duration_cast<std::chrono::milliseconds>(now_t - start_t).count()/1000 << "s"
+	    << std::endl;
 }
 
 KSEQ_INIT(gzFile, gzread)
@@ -66,9 +66,9 @@ void add_kmers_to_bf(BF &bf, KMAP &ref_bf, const VK_GROUP &kmers) {
         // For each list of kmers of the allele
         for (const auto &kmer : Ks) {
           // For each kmer in the kmer list
-          if(p.first == 0)
+	  if(p.first == 0)
             ref_bf.add_key(kmer.c_str());
-          else
+	  else
             bf.add_key(kmer.c_str());
         }
       }
@@ -164,6 +164,7 @@ int main(int argc, char *argv[]) {
   }
 
   // References are stored in a map
+  pelapsed("Reference parsing");
   std::unordered_map<std::string, std::string> refs;
   int l;
   while ((l = kseq_read(reference)) >= 0) {
@@ -174,8 +175,10 @@ int main(int argc, char *argv[]) {
     std::string seq (reference->seq.s);
     refs[id] = seq;
   }
+  pelapsed("Reference processed");
 
   // STEP 1: add VCF kmers to bloom filter
+  pelapsed("VCF parsing (Bloom Filter construction)...");
   BF bf(opt::bf_size);
   KMAP ref_bf;
   BF context_bf(opt::bf_size);
@@ -184,9 +187,14 @@ int main(int argc, char *argv[]) {
   VB vb(opt::k, opt::error_rate);
   std::string last_seq_name = "";
 
+  int i = 0;
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
     bcf_unpack(vcf_record, BCF_UN_STR);
     Variant v(vcf_header, vcf_record, opt::freq_key);
+    ++i;
+    if(i%5000 == 0) {
+      std::cerr << "\rProcessed " << i << " variants";
+    }
 
     // In the first iteration, we set last_seq_name
     if(last_seq_name.size() == 0) {
@@ -231,6 +239,7 @@ int main(int argc, char *argv[]) {
     add_kmers_to_bf(bf, ref_bf, kmers);
     vb.clear();
   }
+  std::cerr << "\rProcessed " << i << " variants" << std::endl;
 
   bcf_hdr_destroy(vcf_header);
   bcf_destroy(vcf_record);
@@ -240,6 +249,7 @@ int main(int argc, char *argv[]) {
 
   pelapsed("BF creation complete");
 
+  pelapsed("Reference BF construction");
   for(const auto &seq_name : used_seq_names) {
     std::string reference = refs[seq_name];
     std::string ref_ksub(reference, (opt::ref_k - opt::k) / 2, opt::k);
@@ -264,6 +274,7 @@ int main(int argc, char *argv[]) {
   context_bf.switch_mode();
 
   // STEP 2: test variants present in read sample
+  pelapsed("KMC output processing");
   uint32 klen, mode, min_counter, pref_len, sign_len, min_c, counter;
   uint64 tot_kmers, max_c;
   kmer_db.Info(klen, mode, min_counter, pref_len, sign_len, min_c, max_c, tot_kmers);
@@ -297,11 +308,16 @@ int main(int argc, char *argv[]) {
   set_samples_code = bcf_hdr_set_samples(vcf_header, opt::samples.c_str(), is_file_flag);
   vcf_record = bcf_init();
 
+  pelapsed("VCF parsing and genotyping");
+  i = 0;
   last_seq_name = "";
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
     bcf_unpack(vcf_record, BCF_UN_STR);
     Variant v(vcf_header, vcf_record, opt::freq_key);
-
+    ++i;
+    if(i%5000 == 0) {
+      std::cerr << "\rProcessed " << i << " variants";
+    }
     // In the first iteration, we set last_seq_name
     if(last_seq_name.size() == 0)
       last_seq_name = v.seq_name;
@@ -347,6 +363,7 @@ int main(int argc, char *argv[]) {
     vb.output_variants(opt::verbose);
     vb.clear();
   }
+  std::cerr << "\rProcessed " << i << " variants" << std::endl;
 
   bcf_hdr_destroy(vcf_header);
   bcf_destroy(vcf_record);
