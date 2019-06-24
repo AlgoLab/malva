@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
   pelapsed("Reference processed");
 
   // STEP 1: add VCF kmers to bloom filter
-  pelapsed("VCF parsing (Bloom Filter construction)...");
+  pelapsed("VCF parsing (Bloom Filter construction)");
   BF bf(opt::bf_size);
   KMAP ref_bf;
   BF context_bf(opt::bf_size);
