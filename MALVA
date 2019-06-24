@@ -1,8 +1,5 @@
 #!/bin/bash
 
-echo "This script is currently deprecated - use release 1.0.1 (https://github.com/AlgoLab/malva/releases/tag/v1.0.1)"
-exit 0
-
 SCRIPT_NAME=$(basename $0)
 BIN_NAME="malva-geno"
 EXECUTABLE="$(dirname $0)/${BIN_NAME}"
@@ -11,7 +8,8 @@ KMC_BIN="$(dirname $0)/KMC/bin/kmc"
 DEFAULT_KSIZE=35
 DEFAULT_REF_KSIZE=43
 DEFAULT_ERR_RATE=0.001
-DEFAULT_POP="EUR"
+DEFAULT_FREQ="AF"
+DEFAULT_SAMPLES="-"
 DEFAULT_MAX_COV=200
 DEFAULT_BF_SIZE=4
 DEFAULT_MAX_MEM=4
@@ -23,7 +21,8 @@ Arguments:
      -k              size of the kmers to index (default:'"${DEFAULT_KSIZE}"')
      -r              size of the reference kmers to index (default:'"${DEFAULT_REF_KSIZE}"')
      -e              expected sample error rate (default:'"${DEFAULT_ERR_RATE}"')
-     -p              population to consider while reading input VCF (default:'"${DEFAULT_POP}"')
+     -s              file containing the list of (VCF) samples to consider (default:'"${DEFAULT_SAMPLES}"', i.e. all samples)
+     -f              a priori frequency key in the INFO column of the input VCF (default:'"${DEFAULT_FREQ}"')
      -c              maximum coverage for variant alleles (default:'"${DEFAULT_MAX_COV}"')
      -b              bloom filter size in GB (default:'"${DEFAULT_BF_SIZE}"')
      -m              max amount of RAM in GB - KMC parameter (default:'"${DEFAULT_MAX_MEM}"')
@@ -40,30 +39,33 @@ sample=""
 k=${DEFAULT_KSIZE}
 refk=${DEFAULT_REF_KSIZE}
 erate=${DEFAULT_ERR_RATE}
-pop=${DEFAULT_POP}
+freq=${DEFAULT_FREQ}
+samples=${DEFAULT_SAMPLES}
 maxcov=${DEFAULT_MAX_COV}
 bfsize=${DEFAULT_BF_SIZE}
 maxmem=${DEFAULT_MAX_MEM}
 
-while getopts "k:r:e:p:c:b:m:h" flag; do
+while getopts "k:r:e:f:s:c:b:m:h" flag; do
     case "${flag}" in
-        h) $(>&2 echo "${USAGE}")
-           exit 0
-           ;;
-        k) k=${OPTARG}
-           ;;
-        r) refk=${OPTARG}
-           ;;
-        e) erate=${OPTARG}
-           ;;
-        p) pop=${OPTARG}
-           ;;
-        c) maxcov=${OPTARG}
-           ;;
-        b) bfsize=${OPTARG}
-           ;;
-        m) maxmem=${OPTARG}
-           ;;
+	h) $(>&2 echo "${USAGE}")
+	   exit 0
+	   ;;
+	k) k=${OPTARG}
+	   ;;
+	r) refk=${OPTARG}
+	   ;;
+	e) erate=${OPTARG}
+	   ;;
+	f) freq=${OPTARG}
+	   ;;
+	s) samples=${OPTARG}
+	   ;;
+	c) maxcov=${OPTARG}
+	   ;;
+	b) bfsize=${OPTARG}
+	   ;;
+	m) maxmem=${OPTARG}
+	   ;;
     esac
 done
 
@@ -92,7 +94,7 @@ else
 fi
 
 (>&2 echo "[${SCRIPT_NAME}] Running ${BIN_NAME}")
-${EXECUTABLE} -k ${k} -r ${refk} -e ${erate} -p ${pop} -c ${maxcov} -b ${bfsize}  ${reference} ${vcf_file} ${kmc_out_prefix}
+${EXECUTABLE} -k ${k} -r ${refk} -e ${erate} -f ${freq} -s ${samples} -c ${maxcov} -b ${bfsize}  ${reference} ${vcf_file} ${kmc_out_prefix}
 
 (>&2 echo "[${SCRIPT_NAME}] Cleaning up")
 rm -rf ${kmc_tmp_dir}
