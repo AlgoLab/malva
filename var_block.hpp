@@ -89,7 +89,7 @@ public:
       for (const std::vector<int> &comb : combs) {
         std::vector<std::string> ref_subs = get_ref_subs(comb, reference);
         std::set<std::vector<std::string>> alt_allele_combs =
-          build_alternative_alleles_combs(comb, v_index);
+          build_alleles_combs(comb, v_index);
 
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // !!! the body of this for could be split in more methods !!!
@@ -320,23 +320,6 @@ private: // methods
       v2.ref_pos;
   }
 
-  /**
-   * Return true if variant v1 is gt-compatible with variant v2
-   **/
-  bool are_gt_compatible(const Variant &v1, const Variant &v2) {
-    for (const uint i : v1.positive_samples) {
-      if (v1.phasing[i]) {
-        if ((v1.genotypes[i].first != 0 && v2.genotypes[i].first != 0) ||
-            (v1.genotypes[i].second != 0 && v2.genotypes[i].second != 0))
-          return true;
-      } else {
-        if ((v1.genotypes[i].first != 0 || v1.genotypes[i].second != 0) &&
-            (v2.genotypes[i].first != 0 || v2.genotypes[i].second != 0))
-          return true;
-      }
-    }
-    return false;
-  }
   //------------------------------------------------------------------
 
   //- Methods for kmers generation  ----------------------------------
@@ -351,77 +334,75 @@ private: // methods
   std::vector<std::vector<int>> get_combs_on_the_right(const int &i) {
     Variant *mid_v = &variants[i];
     std::vector<std::vector<int>> right_combs; // possible combinations
-    std::vector<int> right_sums; // total sum of the combinations (for checking
-                                 // (k/2)-proximity)
+    std::vector<int> right_sums;               // total sum of the combinations (for checking
+                                               // (k/2)-proximity)
     bool halt_flag = false;
     for (uint j = i + 1; j < variants.size() && !halt_flag; ++j) {
       Variant *curr_v = &variants[j];
 
       if (!curr_v->is_present)
-        continue;
+	continue;
 
       if (are_overlapping(*mid_v, *curr_v))
         continue;
 
       if (right_combs.empty()) { // first var to be added
-        if (are_near(*mid_v, *curr_v, k) and are_gt_compatible(*mid_v, *curr_v)) {
+        if (are_near(*mid_v, *curr_v, k)) {
           std::vector<int> new_comb(1, (int)j);
           right_combs.push_back(new_comb);
           right_sums.push_back(curr_v->ref_size - curr_v->min_size);
         }
       } else {
-        if (are_gt_compatible(*mid_v, *curr_v)) {
-          // add the var to all the compatible combinations
-          bool added_flag = false;
-          for (uint c = 0; c < right_combs.size(); ++c) {
-            std::vector<int> comb = right_combs[c];
-            int sum = right_sums[c];
+	// add the var to all the compatible combinations
+	bool added_flag = false;
+	for (uint c = 0; c < right_combs.size(); ++c) {
+	  std::vector<int> comb = right_combs[c];
+	  int sum = right_sums[c];
 
-            Variant *last_v_in_comb = &variants[comb.back()];
+	  Variant *last_v_in_comb = &variants[comb.back()];
 
-            if (!are_overlapping(*last_v_in_comb, *curr_v)) {
-              added_flag = true;
-              if (are_near(*mid_v, *curr_v, k, sum)) {
-                right_combs[c].push_back(j);
-                right_sums[c] += curr_v->ref_size - curr_v->min_size;
-              }
-            }
-          }
-          if (!added_flag) {
-            // if the var has not been added to any combination
-            std::vector<std::vector<int>> new_right_combs;
-            std::vector<int> new_right_sums;
-            for (uint c = 0; c < right_combs.size(); ++c) {
-              // shorten the combinations and try to add the var
-              std::vector<int> new_comb = right_combs[c];
-              int new_sum = right_sums[c];
+	  if (!are_overlapping(*last_v_in_comb, *curr_v)) {
+	    added_flag = true;
+	    if (are_near(*mid_v, *curr_v, k, sum)) {
+	      right_combs[c].push_back(j);
+	      right_sums[c] += curr_v->ref_size - curr_v->min_size;
+	    }
+	  }
+	}
+	if (!added_flag) {
+	  // if the var has not been added to any combination
+	  std::vector<std::vector<int>> new_right_combs;
+	  std::vector<int> new_right_sums;
+	  for (uint c = 0; c < right_combs.size(); ++c) {
+	    // shorten the combinations and try to add the var
+	    std::vector<int> new_comb = right_combs[c];
+	    int new_sum = right_sums[c];
 
-              Variant *last_v_in_comb = &variants[new_comb.back()];
+	    Variant *last_v_in_comb = &variants[new_comb.back()];
 
-              while (are_overlapping(*last_v_in_comb, *curr_v) and
-                     !new_comb.empty()) {
-                new_comb.pop_back();
-                new_sum -= last_v_in_comb->ref_size - last_v_in_comb->min_size;
-                last_v_in_comb = &variants[new_comb.back()];
-              }
-              new_comb.push_back(j);
-              if (are_near(*mid_v, *curr_v, k, new_sum)) {
-                added_flag = true;
-                new_right_combs.push_back(new_comb);
-                new_right_sums.push_back(new_sum + curr_v->ref_size -
-                                         curr_v->min_size);
-              }
-            }
-            extend(right_combs, new_right_combs);
-            extend(right_sums, new_right_sums);
+	    while (are_overlapping(*last_v_in_comb, *curr_v) and
+		   !new_comb.empty()) {
+	      new_comb.pop_back();
+	      new_sum -= last_v_in_comb->ref_size - last_v_in_comb->min_size;
+	      last_v_in_comb = &variants[new_comb.back()];
+	    }
+	    new_comb.push_back(j);
+	    if (are_near(*mid_v, *curr_v, k, new_sum)) {
+	      added_flag = true;
+	      new_right_combs.push_back(new_comb);
+	      new_right_sums.push_back(new_sum + curr_v->ref_size -
+				       curr_v->min_size);
+	    }
+	  }
+	  extend(right_combs, new_right_combs);
+	  extend(right_sums, new_right_sums);
 
-            // if the var has not been added to any combination (neither to
-            // shortened ones), we can halt the loop: no successive variants
-            // will be added (too far away)
-            if (!added_flag)
-              halt_flag = true;
-          }
-        }
+	  // if the var has not been added to any combination (neither to
+	  // shortened ones), we can halt the loop: no successive variants
+	  // will be added (too far away)
+	  if (!added_flag)
+	    halt_flag = true;
+	}
       }
     }
 
@@ -452,64 +433,62 @@ private: // methods
         continue;
 
       if (left_combs.empty()) { // first var to be added
-        if (are_near(*curr_v, *mid_v, k) and are_gt_compatible(*mid_v, *curr_v)) {
+        if (are_near(*curr_v, *mid_v, k)) {
           std::vector<int> new_comb(1, (int)j);
           left_combs.push_back(new_comb);
           left_sums.push_back(curr_v->ref_size - curr_v->min_size);
         }
       } else {
-        if (are_gt_compatible(*mid_v, *curr_v)) {
-          // add the var to all the compatible combinations
-          bool added_flag = false;
-          for (uint c = 0; c < left_combs.size(); ++c) {
-            std::vector<int> comb = left_combs[c];
-            int sum = left_sums[c];
+	// add the var to all the compatible combinations
+	bool added_flag = false;
+	for (uint c = 0; c < left_combs.size(); ++c) {
+	  std::vector<int> comb = left_combs[c];
+	  int sum = left_sums[c];
 
-            Variant *last_v_in_comb = &variants[comb.back()];
+	  Variant *last_v_in_comb = &variants[comb.back()];
 
-            if (!are_overlapping(*curr_v, *last_v_in_comb)) {
-              added_flag = true;
-              if (are_near(*curr_v, *mid_v, k, sum)) {
-                left_combs[c].push_back(j);
-                left_sums[c] += curr_v->ref_size - curr_v->min_size;
-              }
-            }
-          }
-          if (!added_flag) {
-            // if the var has not been added to any combination
-            std::vector<std::vector<int>> new_left_combs;
-            std::vector<int> new_left_sums;
-            for (uint c = 0; c < left_combs.size(); ++c) {
-              // shorten the combinations and try to add the var
-              std::vector<int> new_comb = left_combs[c];
-              int new_sum = left_sums[c];
+	  if (!are_overlapping(*curr_v, *last_v_in_comb)) {
+	    added_flag = true;
+	    if (are_near(*curr_v, *mid_v, k, sum)) {
+	      left_combs[c].push_back(j);
+	      left_sums[c] += curr_v->ref_size - curr_v->min_size;
+	    }
+	  }
+	}
+	if (!added_flag) {
+	  // if the var has not been added to any combination
+	  std::vector<std::vector<int>> new_left_combs;
+	  std::vector<int> new_left_sums;
+	  for (uint c = 0; c < left_combs.size(); ++c) {
+	    // shorten the combinations and try to add the var
+	    std::vector<int> new_comb = left_combs[c];
+	    int new_sum = left_sums[c];
 
-              Variant *last_v_in_comb = &variants[new_comb.back()];
+	    Variant *last_v_in_comb = &variants[new_comb.back()];
 
-              while (are_overlapping(*curr_v, *last_v_in_comb) and
-                     !new_comb.empty()) {
-                new_comb.pop_back();
-                new_sum -= last_v_in_comb->ref_size - last_v_in_comb->min_size;
-                last_v_in_comb = &variants[new_comb.back()];
-              }
-              new_comb.push_back(j);
-              if (are_near(*curr_v, *mid_v, k, new_sum)) {
-                added_flag = true;
-                new_left_combs.push_back(new_comb);
-                new_left_sums.push_back(new_sum + curr_v->ref_size -
-                                        curr_v->min_size);
-              }
-            }
-            extend(left_combs, new_left_combs);
-            extend(left_sums, new_left_sums);
+	    while (are_overlapping(*curr_v, *last_v_in_comb) and
+		   !new_comb.empty()) {
+	      new_comb.pop_back();
+	      new_sum -= last_v_in_comb->ref_size - last_v_in_comb->min_size;
+	      last_v_in_comb = &variants[new_comb.back()];
+	    }
+	    new_comb.push_back(j);
+	    if (are_near(*curr_v, *mid_v, k, new_sum)) {
+	      added_flag = true;
+	      new_left_combs.push_back(new_comb);
+	      new_left_sums.push_back(new_sum + curr_v->ref_size -
+				      curr_v->min_size);
+	    }
+	  }
+	  extend(left_combs, new_left_combs);
+	  extend(left_sums, new_left_sums);
 
-            // if the var has not been added to any combination (neither to
-            // shortened ones), we can halt the loop: no successive variants
-            // will be added (too far away)
-            if (!added_flag)
-              halt_flag = true;
-          }
-        }
+	  // if the var has not been added to any combination (neither to
+	  // shortened ones), we can halt the loop: no successive variants
+	  // will be added (too far away)
+	  if (!added_flag)
+	    halt_flag = true;
+	}
       }
     }
 
@@ -579,31 +558,59 @@ private: // methods
   }
 
   /**
-   * Builds and returns all the possible combination of alternative alleles,
+   * Given two haplotypes, build all possible combinations from them
+   * (used when gt information is unphased). Example: given 0/1, 1/3,
+   * 1/1, I want: 0,1,1; 0,3,1; 1,1,1; 1,3,1 (with repetitions).
+   **/
+  std::vector<std::vector<std::string>> combine_haplotypes(std::vector<std::string> hap1,
+					      std::vector<std::string> hap2) {
+    int n = hap1.size(); // number of alleles in each haplotype
+    int N = pow(2, n-1); // number of possible haplotypes
+    std::vector<std::vector<std::string>> HAPs (2*N, std::vector<std::string>(n));
+
+    for(int level=0; level<n; ++level) {
+      std::vector<std::string> alleles ({hap1[level], hap2[level]});
+      int rep = pow(2, n-1-level);
+
+      for(int col=0; col<N; ++col) {
+	HAPs[col][level] = alleles[(col/rep)%2];
+	HAPs[col+N][level] = alleles[(col/rep+1)%2];
+      }
+    }
+    return HAPs;
+  }
+
+  /**
+   * Builds and returns all the possible combination of alleles (haplotypes),
    * with respect to GTs.
    * !!! For now, I'm assuming phased GT !!!
    **/
   std::set<std::vector<std::string>>
-  build_alternative_alleles_combs(const std::vector<int> &comb,
+  build_alleles_combs(const std::vector<int> &comb,
                                   const int &central_index) {
     // A set to avoid duplicate elements
     std::set<std::vector<std::string>> aacs;
     Variant *central_v = &variants[central_index];
     // For each individual having this variant
-    for (const int &gt_i : central_v->positive_samples) {
-      std::vector<std::string> aac;
-      // If GT is not 0|0, then build the vector of alleles
-      //if (central_v->genotypes[gt_i].first != 0) {
-      for (const int &j : comb)
-        aac.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].first));
-      aacs.insert(aac);
-      //}
-      aac.clear();
-      //if (central_v->genotypes[gt_i].second != 0) {
-      for (const int &j : comb)
-        aac.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].second));
-      aacs.insert(aac);
-      //}
+    for (int gt_i = 0; gt_i<(int)central_v->genotypes.size(); ++gt_i) {
+      bool phased_combination = true;
+      std::vector<std::string> hap1;
+      std::vector<std::string> hap2;
+      for (const int &j : comb) {
+	phased_combination &= variants[j].phasing[gt_i];
+        hap1.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].first));
+	hap2.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].second));
+      }
+
+      if(phased_combination) {
+	aacs.insert(hap1);
+	aacs.insert(hap2);
+      } else {
+	std::vector<std::vector<std::string>> all_haplotypes = combine_haplotypes(hap1, hap2);
+	for(const auto hap : all_haplotypes) {
+	  aacs.insert(hap);
+	}
+      }
     }
     return aacs;
   }
