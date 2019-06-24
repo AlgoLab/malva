@@ -102,7 +102,6 @@ Positional arguments:
     <variants>      variants file in VCF format (can be gzipped)
     <sample>        sample file in FASTA/FASTQ format (can be gzipped)
 ```
---->
 
 ## Example
 After you compiled `malva`, you can test it on the example data provided:
