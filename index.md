@@ -65,7 +65,8 @@ Arguments:
     -k, --kmer-size                   size of the kmers to index (default:35)
     -r, --ref-kmer-size               size of the reference kmers to index (default:43)
     -e, --error-rate                  expected sample error rate (default:0.001)
-    -p, --population                  population to consider while reading input VCF (default:EUR)
+    -s, --samples                     file containing the list of (VCF) samples to consider (default:-, i.e. all samples)
+    -f, --freq-key                    a priori frequency key in the INFO column of the input VCF (default:AF)
     -c, --max-coverage                maximum coverage for variant alleles (default:200)
     -b, --bf-size                     bloom filter size in GB (default:4)
 
@@ -78,7 +79,7 @@ Positional arguments:
 The file needed by malva whose prefix is `<kmc_output_prefix>` can be computed with KMC as follows:
 ```
 cd <path-to-malva-local-repo>
-./KMC/bin/KMC -k <REF-KMER-SIZE> <sample> <kmc_output_prefix>
+./KMC/bin/KMC -k<REF-KMER-SIZE> <sample> <kmc_output_prefix> <kmc_tmp_dir>
 ```
 
 Anyway, we provide a bash script that you can use to run the full pipeline `KMC+malva-geno`:
@@ -90,7 +91,8 @@ Arguments:
      -k              size of the kmers to index (default:35)
      -r              size of the reference kmers to index (default:43)
      -e              expected sample error rate (default:0.001)
-     -p              population to consider while reading input VCF (default:EUR)
+     -s              file containing the list of (VCF) samples to consider (default:-, i.e. all samples)
+     -f              a priori frequency key in the INFO column of the input VCF (default:AF)
      -c              maximum coverage for variant alleles (default:200)
      -b              bloom filter size in GB (default:4)
      -m              max amount of RAM in GB - KMC parameter (default:4)
@@ -102,11 +104,18 @@ Positional arguments:
 ```
 
 ## Example
-After you compile `malva`, you can test it on the example data provided (note that we set the Bloom filter size to 1GB):
+After you compiled `malva`, you can test it on the example data provided:
 ```
 cd example
 tar xvfz data.tar.gz
-../MALVA chr20.fa chr20.vcf chr20.sample.fa -b 1 > chr20.genotyped.vcf
+mkdir -p kmc_tmp
+../MALVA -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf chr20.sample.fa > chr20.genotyped.vcf
+```
+
+The last command is equivalent to run:
+```
+../KMC/bin/kmc -k43 -fm chr20.sample.fa kmc.out kmc_tmp
+../malva-geno -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf kmc.out > chr20.genotyped.vcf
 ```
 
 This should take less than 1 minute to complete. You can also verify
@@ -115,7 +124,6 @@ it with [chr20.malva.vcf](https://github.com/AlgoLab/malva/blob/master/example/c
 
 ### Note
 - The tool has been tested only on 64bit Linux system.
-- The current release is optimized for working with the VCF files provided by the 1000GenomesProject (it uses the value encoded as `*_AF` in the `INFO` field to compute the _a priori_ frequency of each allele). If your VCF file uses a different format, let us know
 
 ## Authors
 
