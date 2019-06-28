@@ -108,13 +108,13 @@ After you compiled `malva`, you can test it on the example data provided:
 ```
 cd example
 tar xvfz data.tar.gz
-mkdir -p kmc_tmp
 ../MALVA -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf chr20.sample.fa > chr20.genotyped.vcf
 ```
 
 The last command is equivalent to run:
 ```
-../KMC/bin/kmc -k43 -fm chr20.sample.fa kmc.out kmc_tmp
+mkdir -p kmc_tmp
+../KMC/bin/kmc -m4 -k43 -fm chr20.sample.fa kmc.out kmc_tmp
 ../malva-geno -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf kmc.out > chr20.genotyped.vcf
 ```
 
