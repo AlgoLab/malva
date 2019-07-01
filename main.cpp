@@ -45,11 +45,12 @@
 
 auto start_t = std::chrono::high_resolution_clock::now();
 
-void pelapsed(const std::string &s = "") {
+void pelapsed(const std::string &s = "", const bool rollback = false) {
   auto now_t = std::chrono::high_resolution_clock::now();
   std::cerr << "[malva-geno/" << s << "] Time elapsed "
-	    << std::chrono::duration_cast<std::chrono::milliseconds>(now_t - start_t).count()/1000 << "s"
-	    << std::endl;
+	    << std::chrono::duration_cast<std::chrono::milliseconds>(now_t - start_t).count()/1000 << "s";
+  if(rollback) std::cerr << "\r";
+  else std::cerr << std::endl;
 }
 
 KSEQ_INIT(gzFile, gzread)
@@ -193,7 +194,8 @@ int main(int argc, char *argv[]) {
     Variant v(vcf_header, vcf_record, opt::freq_key);
     ++i;
     if(i%5000 == 0) {
-      std::cerr << "\rProcessed " << i << " variants";
+      std::string log_line = "Processed " + std::to_string(i) + " variants";
+      pelapsed(log_line, true);
     }
 
     // In the first iteration, we set last_seq_name
@@ -239,7 +241,8 @@ int main(int argc, char *argv[]) {
     add_kmers_to_bf(bf, ref_bf, kmers);
     vb.clear();
   }
-  std::cerr << "\rProcessed " << i << " variants" << std::endl;
+  std::string log_line = "Processed " + std::to_string(i) + " variants";
+  pelapsed(log_line);
 
   bcf_hdr_destroy(vcf_header);
   bcf_destroy(vcf_record);
@@ -316,7 +319,8 @@ int main(int argc, char *argv[]) {
     Variant v(vcf_header, vcf_record, opt::freq_key);
     ++i;
     if(i%5000 == 0) {
-      std::cerr << "\rProcessed " << i << " variants";
+      std::string log_line = "Processed " + std::to_string(i) + " variants";
+      pelapsed(log_line, true);
     }
     // In the first iteration, we set last_seq_name
     if(last_seq_name.size() == 0)
@@ -363,7 +367,8 @@ int main(int argc, char *argv[]) {
     vb.output_variants(opt::verbose);
     vb.clear();
   }
-  std::cerr << "\rProcessed " << i << " variants" << std::endl;
+  log_line = "Processed " + std::to_string(i) + " variants";
+  pelapsed(log_line);
 
   bcf_hdr_destroy(vcf_header);
   bcf_destroy(vcf_record);
