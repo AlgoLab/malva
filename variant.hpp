@@ -26,31 +26,71 @@
 #include <string>
 #include <vector>
 
-typedef pair<string, long double> GT;
+#include "kstring.h"
+
+// typedef pair<string, long double> GT;
+
+struct GT { // This name is already used in variant.hpp
+  uint8_t a1, a2;
+  bool phased;
+  long double quality;
+
+  GT() {
+    a1 = 0;
+    a2 = 0;
+    phased = true;
+    quality = 0;
+  }
+
+  GT(uint8_t a1_, uint8_t a2_, bool phased_, long double quality_ = 0) {
+    a1 = a1_;
+    a2 = a2_;
+    phased = phased_ || a1 == a2;
+    quality = quality_;
+  }
+
+  string to_str() {
+    return phased ? to_string(a1)+"|"+to_string(a2) : to_string(a1)+"/"+to_string(a2);
+  }
+
+  void print() {
+    if(phased)
+      cout << (int)a1 << "|" << (int)a2 << endl;
+    else
+      cout << (int)a1 << "/" << (int)a2 << endl;
+  }
+};
+
 
 struct Variant {
-  string seq_name;
-  int ref_pos;                                // Variant position 0-based
-  string idx;                            // ID
-  string ref_sub;                        // Reference base{s}
-  vector<string> alts;              // List of alternatives
-  float quality;                              // Quality field
-  string filter;                         // Filter field
-  string info;                           // Info field
-  vector<pair<int, int>> genotypes; // full list of genotypes
-  vector<bool> phasing;                  // true if genotype i-th is phased, false otherwise
-  int ref_size;                               // Len of reference base{s}
-  int min_size;                               // Length of the shortest string (ref and alts)
-  int max_size;                               // Length of the longest string (ref and alts)
-  bool has_alts = true;                       // false if no alternatives, i.e. only <CN>
-  bool is_present = true;                     // false if no sample has this variant
-  vector<float> frequencies;             // Allele frequency in the considered population
-  vector<float> coverages;               // Allele coverages (computed from input sample)
-  vector<GT> computed_gts;               // Computed genotypes
+  kstring_t *vcf_line;            // kstring_t from the vcf
+  string seq_name;                // Chromosome/Contig
+  int ref_pos;                    // Variant position 0-based
+  string idx;                     // ID
+  string ref_sub;                 // Reference base{s}
+  vector<string> alts;            // List of alternatives
+  float quality;                  // Quality field
+  string filter;                  // Filter field
+  string info;                    // Info field
+  vector<GT> genotypes;           // Genotypes/Samples
+  vector<bool> phasing;           // true if genotype i-th is phased, false otherwise
+  int n_individuals;              // Number of samples
+  int ref_size;                   // Len of reference base{s}
+  int min_size;                   // Length of the shortest string (ref and alts)
+  int max_size;                   // Length of the longest string (ref and alts)
+  bool has_alts = true;           // false if no alternatives, i.e. only <CN>
+  bool is_present = true;         // false if no sample has this variant
+  vector<float> frequencies;      // Allele frequency in the considered population
+  vector<float> coverages;        // Allele coverages (computed from input sample)
+  vector<GT> computed_gts;        // Computed genotypes
 
   Variant() {}
 
-  Variant(bcf_hdr_t *vcf_header, bcf1_t *vcf_record, const string &freq_key) {
+  Variant(htsFile *vcf, bcf_hdr_t *vcf_header, bcf1_t *vcf_record, const string &freq_key) {
+    vcf_line = new kstring_t();
+    ks_initialize(vcf_line);
+    kputsn(vcf->line.s, vcf->line.l, vcf_line);
+
     seq_name = bcf_hdr_id2name(vcf_header, vcf_record->rid);
     ref_pos = vcf_record->pos;
     idx = vcf_record->d.id;
@@ -61,23 +101,26 @@ struct Variant {
      * alternatives are <CN> but maybe there could be more cases...
      **/
     ref_size = (int)ref_sub.size();
-    for (int i = 1; i < vcf_record->n_allele; ++i) {
-      char *curr_alt = vcf_record->d.allele[i];
-      if (curr_alt[0] != '<')
-        alts.push_back(string(curr_alt));
-    }
+    extract_alternative_alleles(vcf_record);
     coverages.resize(alts.size() + 1, 0); //+1 for the reference allele
     quality = vcf_record->qual;
     filter = "PASS"; // TODO: get filter string from VCF
     info = ".";      // TODO: get info string from VCF
     // Set sizes and has_alts flag
     set_sizes();
-    if (has_alts) {
-      // Populate frequencies vector
+    n_individuals = bcf_hdr_nsamples(vcf_header);
+    if (has_alts) // Populate frequencies vector
       extract_frequencies(vcf_header, vcf_record, freq_key);
-      if (is_present)
-        // Populate genotypes and phasing
-        extract_genotypes(vcf_header, vcf_record);
+  }
+
+  /**
+   * Parse the alternative alleles and fill the corresponding vector.
+   **/
+  void extract_alternative_alleles(bcf1_t *vcf_record) {
+    for (int i = 1; i < vcf_record->n_allele; ++i) {
+      char *curr_alt = vcf_record->d.allele[i];
+      if (curr_alt[0] != '<')
+        alts.push_back(string(curr_alt));
     }
   }
 
@@ -118,46 +161,72 @@ struct Variant {
       is_present = false;
   }
 
-  void extract_genotypes(bcf_hdr_t *vcf_header, bcf1_t *vcf_record) {
-    // number of individuals from header
-    int n_individuals = bcf_hdr_nsamples(vcf_header);
-    int32_t *gt_arr = NULL, ngt = 0;
-    int ngt_ret_value =
-        bcf_get_genotypes(vcf_header, vcf_record, &gt_arr, &ngt);
-    /***
-     * If the record contains GT fields, ngt == ngt_ret_value == #GT.
-     * Otherwise, ngt_ret_value is <= 0 that means an error occurred.
-     ***/
-    if (ngt_ret_value <= 0) {
-      // cout << "The record doesn't contain GT information" << endl;
-      has_alts = false;
-      return;
-    }
-
-    int ploidy = ngt / n_individuals;
-    for (int i = 0; i < n_individuals; ++i) {
-      int32_t *curr_gt = gt_arr + i * ploidy;
-      // Here, I'm assuming ploidy = 2. Otherwise, loop til ploidy
-      int all_1;
-      int all_2;
-      bool is_phased = false;
-      if (curr_gt[1] == bcf_int32_vector_end) {
-        all_1 = bcf_gt_allele(curr_gt[0]);
-        all_2 = bcf_gt_allele(curr_gt[0]);
-	is_phased = true;
-      } else {
-        all_1 = bcf_gt_allele(curr_gt[0]);
-        all_2 = bcf_gt_allele(curr_gt[1]);
-        if (bcf_gt_is_phased(curr_gt[1]))
-          // this works, but I'm not 100% sure it's sufficient
-          is_phased = true;
+  /**
+   * Given the kstring_t, cut the prefix and returns the suffix
+   * containing only the samples. [used by fill_genotypes]
+   **/
+  char* get_samples(char *vcf_line) {
+    int offset = 0;
+    char* fmt_suffix;
+    int fmt_size = 0;
+    bool fmt_flag = false;
+    while(!fmt_flag) {
+      offset += strlen(vcf_line + offset) + 1;
+      /**
+       * From VCF format specification: "The first sub-field must always
+       * be the genotype (GT) if it is present. There are no required
+       * sub-fields."
+       **/
+      if(strncmp(vcf_line + offset, "GT\t", 3) == 0 || strncmp(vcf_line + offset, "GT:", 3) == 0) {
+	fmt_flag = true;
+	fmt_suffix = vcf_line + offset;
+	char* fmt_end = strchr(fmt_suffix, '\t');
+	if(fmt_end==NULL) {
+	  cerr << "Error - No samples" << endl;
+	  exit(1);
+	}
+	fmt_size = fmt_end - fmt_suffix;
       }
-      if(all_1 < 0) all_1 = 0;
-      if(all_2 < 0) all_2 = 0;
-      genotypes.push_back(make_pair(all_1, all_2));
-      phasing.push_back(is_phased);
     }
-    free(gt_arr);
+    return vcf_line + offset + fmt_size + 1;
+  }
+
+  /**
+   * Transform a char* representing a genotype to the struct GT. [used
+   * by fill_genotypes]
+   **/
+  GT extract_genotype(char* gt) {
+    if(!strcmp(gt, ".")) {
+      return GT();
+    }
+    bool phased = strchr(gt, '/') != NULL;
+    int all1, all2;
+    char *all = strtok (gt,"/|");
+    all1 = atoi(all);
+    all = strtok(NULL,"/|");
+    all2 = all==NULL ? all1 : atoi(all);
+    return GT(all1, all2, phased);
+  }
+
+  /**
+   * Builds the genotypes from the kstring_t and fills the
+   * corresponding vector
+   **/
+  void fill_genotypes() {
+    genotypes.resize(n_individuals);
+    phasing.resize(n_individuals);
+
+    char *samples = get_samples(vcf_line->s);
+    int i = 0;
+    for(;;) {
+      char *next_tab = strchr(samples, '\t');
+      char *gtc = strtok(samples,":\t");
+      GT gt = extract_genotype(gtc);
+      genotypes[i] = gt;
+      if(next_tab == NULL) break;
+      samples = next_tab+1;
+    }
+    ks_free(vcf_line);
   }
 
   /**
