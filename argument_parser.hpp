@@ -41,7 +41,7 @@ static const char *USAGE_MESSAGE =
   "      -c, --max-coverage                maximum coverage for variant alleles (default:200)\n"
   "      -b, --bf-size                     bloom filter size in GB (default:4)\n"
   // "      -v, --verbose                     output a detailed VCF (more information in the INFO column)\n"
-  // "      -t, --threads                     number of threads (default: 1)\n"
+  "      -t, --threads                     number of threads (default: 1)\n"
   "\n";
 
 namespace opt {
@@ -53,13 +53,13 @@ static string freq_key = "AF";
 static uint max_coverage = 200;
 static uint64_t bf_size = ((uint64_t)0b1 << 35);
 static bool verbose = false;
-// static size_t nThreads = 1;
+static size_t n_threads = 1;
 static string fasta_path;
 static string vcf_path;
 static string kmc_sample_path;
 }
 
-static const char *shortopts = "k:r:e:s:f:c:b:h";
+static const char *shortopts = "k:r:e:s:f:c:b:t:h";
 
 static const struct option longopts[] = {
     {"kmer-size", required_argument, NULL, 'k'},
@@ -70,7 +70,7 @@ static const struct option longopts[] = {
     {"max-coverage", required_argument, NULL, 'c'},
     {"bf-size", required_argument, NULL, 'b'},
     // {"verbose", no_argument, NULL, 'v'},
-    // {"threads", no_argument, NULL, 't'},
+    {"threads", no_argument, NULL, 't'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}};
 
@@ -106,9 +106,9 @@ void parse_arguments(int argc, char **argv) {
     // case 'v':
     //   opt::verbose = true;
     //   break;
-    // case 't':
-    //   arg >> opt::nThreads;
-    //   break;
+    case 't':
+      arg >> opt::n_threads;
+      break;
     case '?':
       die = true;
       break;
