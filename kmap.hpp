@@ -42,27 +42,27 @@
 // };
 
 struct KMAP {
-  std::unordered_map<std::string, int> kmers;
-  std::unordered_map<std::string, int> _times;
+  unordered_map<string, int> kmers;
+  unordered_map<string, int> _times;
 
   KMAP() {}
 
   static const char _compl(const char &c) { return RCN[c]; }
 
-  std::string canonical(const char* kmer) {
+  string canonical(const char* kmer) {
     uint k = strlen(kmer);
     char ckmer[k + 1];
     strcpy(ckmer, kmer);
-    std::transform(ckmer, ckmer + k, ckmer, _compl);
-    std::reverse(ckmer, ckmer + k);
+    transform(ckmer, ckmer + k, ckmer, _compl);
+    reverse(ckmer, ckmer + k);
     if (strcmp(kmer, ckmer) < 0)
       memmove(ckmer, kmer, k);
-    std::string kmer_string (ckmer);
+    string kmer_string (ckmer);
     return kmer_string;
   }
 
   bool test_key(const char* kmer) {
-    std::string ckmer = canonical(kmer);
+    string ckmer = canonical(kmer);
     if(kmers.find(ckmer) == kmers.end())
       return false;
     else
@@ -70,12 +70,12 @@ struct KMAP {
   }
 
   void add_key(const char* kmer) {
-    std::string ckmer = canonical(kmer);
+    string ckmer = canonical(kmer);
     kmers[ckmer] = 0;
   }
 
   void increment(const char* kmer, int counter) {
-    std::string ckmer = canonical(kmer);
+    string ckmer = canonical(kmer);
     if(kmers.find(ckmer) != kmers.end()) {
       uint32 new_value = kmers[ckmer] + counter;
       kmers[ckmer] = new_value < 250 ? new_value : 250;
@@ -84,7 +84,7 @@ struct KMAP {
   }
 
   void increment_with_average(const char* kmer, int counter) {
-    std::string ckmer = canonical(kmer);
+    string ckmer = canonical(kmer);
     if(kmers.find(ckmer) != kmers.end()) {
       uint32 new_value = (kmers[ckmer] * _times[ckmer] + counter) / (_times[ckmer]+1);
       kmers[ckmer] = new_value < 250 ? new_value : 250;
@@ -93,7 +93,7 @@ struct KMAP {
   }
 
   int get_count(const char* kmer) {
-    std::string ckmer = canonical(kmer);
+    string ckmer = canonical(kmer);
     if(kmers.find(ckmer) != kmers.end())
       return kmers[ckmer];
     else
@@ -101,7 +101,7 @@ struct KMAP {
   }
 
   int get_times(const char* kmer) {
-    std::string ckmer = canonical(kmer);
+    string ckmer = canonical(kmer);
     if(kmers.find(ckmer) != kmers.end())
       return _times[ckmer];
     else

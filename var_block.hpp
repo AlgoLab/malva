@@ -25,7 +25,7 @@
 #include "variant.hpp"
 
 // Maybe these maps can be translated into vectors
-typedef std::map<int, std::map<int, std::vector<std::vector<std::string>>>> VK_GROUP;
+typedef map<int, map<int, vector<vector<string>>>> VK_GROUP;
 
 typedef long double ldouble;
 
@@ -39,7 +39,7 @@ template <typename T> void extend(T &V1, const T &V2) {
 
 class VB {
 private: // attributes
-  std::vector<Variant> variants;
+  vector<Variant> variants;
   int k;
   float error_rate;
   int number_variants_out = 0;
@@ -67,10 +67,10 @@ public:
 
   void clear() { variants.clear(); }
 
-  VK_GROUP extract_kmers(const std::string &reference) {
+  VK_GROUP extract_kmers(const string &reference) {
     VK_GROUP kmers;
     for (uint v_index = 0; v_index < variants.size(); ++v_index) {
-      std::map<int, std::vector<std::vector<std::string>>> _kmers;
+      map<int, vector<vector<string>>> _kmers;
 
       Variant *v = &variants[v_index];
 
@@ -79,29 +79,29 @@ public:
         continue;
       }
 
-      std::vector<std::vector<int>> right_combs =
+      vector<vector<int>> right_combs =
         get_combs_on_the_right(v_index);
-      std::vector<std::vector<int>> left_combs = get_combs_on_the_left(v_index);
+      vector<vector<int>> left_combs = get_combs_on_the_left(v_index);
 
-      std::vector<std::vector<int>> combs =
+      vector<vector<int>> combs =
         combine_combs(left_combs, right_combs, v_index);
 
-      for (const std::vector<int> &comb : combs) {
-        std::vector<std::string> ref_subs = get_ref_subs(comb, reference);
-        std::set<std::vector<std::string>> alt_allele_combs =
+      for (const vector<int> &comb : combs) {
+        vector<string> ref_subs = get_ref_subs(comb, reference);
+        set<vector<string>> alt_allele_combs =
           build_alleles_combs(comb, v_index);
 
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // !!! the body of this for could be split in more methods !!!
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        for (const std::vector<std::string> aac : alt_allele_combs) {
-          std::vector<std::string> ksss; // kmers sequences
-          std::string mid_allele;
+        for (const vector<string> aac : alt_allele_combs) {
+          vector<string> ksss; // kmers sequences
+          string mid_allele;
 
           if (aac.size() == 1 && aac[0].size() >= (uint)k) {
             mid_allele = aac[0];
 
-            std::string kmer = mid_allele.substr(0, k);
+            string kmer = mid_allele.substr(0, k);
             transform(kmer.begin(), kmer.end(), kmer.begin(), ::toupper);
             ksss.push_back(kmer);
 
@@ -112,10 +112,10 @@ public:
               ksss.push_back(kmer);
             }
           } else {
-            std::string kmer = "";
+            string kmer = "";
             int mid_pos_in_kmer = 0;
             for (uint j = 0; j < aac.size(); ++j) {
-              std::string rs;
+              string rs;
               if (j >= ref_subs.size())
                 rs = "";
               else
@@ -139,7 +139,7 @@ public:
             // extending/cutting on the left
             if (missing_prefix >= 0) {
               Variant *first_var_in_comb = &variants[comb.front()];
-              std::string prefix (reference,
+              string prefix (reference,
                                   first_var_in_comb->ref_pos - missing_prefix,
                                   missing_prefix);
               kmer = prefix + kmer;
@@ -149,7 +149,7 @@ public:
             // extending/cutting on the right
             if (missing_suffix >= 0) {
               Variant *last_var_in_comb = &variants[comb.back()];
-              std::string suffix (reference,
+              string suffix (reference,
                                   last_var_in_comb->ref_pos + last_var_in_comb->ref_size,
                                   missing_suffix);
               kmer += suffix;
@@ -166,7 +166,7 @@ public:
           if (_kmers.find(allele_index) != _kmers.end()) {
             _kmers[allele_index].push_back(ksss);
           } else {
-            std::vector<std::vector<std::string>> tmp_kmers;
+            vector<vector<string>> tmp_kmers;
             tmp_kmers.push_back(ksss);
             _kmers[allele_index] = tmp_kmers;
           }
@@ -188,7 +188,7 @@ public:
       bool continue_flag = false;
       for(const int &cov : v->coverages) {
         if(cov > max_cov) {
-          GT gt = std::make_pair("0/0", 1);
+          GT gt = make_pair("0/0", 1);
           v->add_genotype(gt);
           continue_flag = true;
           continue;
@@ -200,20 +200,20 @@ public:
       // The variant wasn't present in any sample: we have only the
       // coverage of the reference allele
       if (v->coverages.size() == 1) {
-        GT gt = std::make_pair("0/0", 1);
+        GT gt = make_pair("0/0", 1);
         v->add_genotype(gt);
         continue;
       }
 
       ldouble max_prob = 0.0;
-      std::string best_geno = "0/0";
+      string best_geno = "0/0";
       for (uint g1 = 0; g1 < v->coverages.size(); ++g1) {
         for (uint g2 = g1; g2 < v->coverages.size(); ++g2) {
           ldouble prior;
           ldouble posterior;
           ldouble total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
           if (g1 == g2) {
-            prior = std::pow(v->frequencies[g1], 2);
+            prior = pow(v->frequencies[g1], 2);
             ldouble truth = v->coverages[g1];
             ldouble error = total_sum - truth;
             posterior = binomial(truth + error, truth) *
@@ -232,9 +232,9 @@ public:
           ldouble prob = prior * posterior;
           if (prob > max_prob) {
             max_prob = prob;
-            best_geno = std::to_string(g1) + "/" + std::to_string(g2);
+            best_geno = to_string(g1) + "/" + to_string(g2);
           }
-          v->add_genotype(std::make_pair(std::to_string(g1) + "/" + std::to_string(g2), prob));
+          v->add_genotype(make_pair(to_string(g1) + "/" + to_string(g2), prob));
         }
       }
     }
@@ -249,31 +249,31 @@ public:
   void output_variants(const bool &verbose) {
     for (uint i = 0; i < variants.size(); ++i) {
       Variant *v = &variants[i];
-      std::cout << v->seq_name << '\t' << v->ref_pos + 1 << '\t' << v->idx
+      cout << v->seq_name << '\t' << v->ref_pos + 1 << '\t' << v->idx
                 << '\t' << v->ref_sub << '\t';
       uint varc = 0;
-      for (const std::string &alt : v->alts) {
-        std::cout << alt;
+      for (const string &alt : v->alts) {
+        cout << alt;
         ++varc;
         if (varc != v->alts.size())
-          std::cout << ',';
+          cout << ',';
       }
-      std::string info = ".";
+      string info = ".";
       if(verbose) {
         // Adds coverages to v->info (here I'm assuming v->info is '.')
         info = "COVS:";
         for(const auto &cov : v->coverages)
-          info+=std::to_string(cov) + "-";
+          info+=to_string(cov) + "-";
         info.pop_back();
       }
       // Adds gts to v->info
-      std::string best_geno = "0/0";
+      string best_geno = "0/0";
       ldouble best_qual = 0;
       ldouble total_qual = 0.0;
       for(const auto gt : v->computed_gts) {
         total_qual += gt.second;
       }
-      std::string geno = "";
+      string geno = "";
       ldouble qual = 0.0;
       if(verbose)
         info += ";GTS:";
@@ -285,11 +285,11 @@ public:
           best_qual = qual;
         }
         if(verbose)
-          info += geno + "_" + std::to_string(qual) + "-";
+          info += geno + "_" + to_string(qual) + "-";
       }
       if(verbose)
         info.pop_back();
-      std::cout << "\t" << v->quality << "\t" << v->filter << "\t" << info
+      cout << "\t" << v->quality << "\t" << v->filter << "\t" << info
                 << "\tGT:GQ\t" << best_geno << ":"
                 << (int)round(best_qual * 100) << "\n";
     }
@@ -331,10 +331,10 @@ private: // methods
    *   - overlapping variants
    *   - gt-compatibility
    **/
-  std::vector<std::vector<int>> get_combs_on_the_right(const int &i) {
+  vector<vector<int>> get_combs_on_the_right(const int &i) {
     Variant *mid_v = &variants[i];
-    std::vector<std::vector<int>> right_combs; // possible combinations
-    std::vector<int> right_sums;               // total sum of the combinations (for checking
+    vector<vector<int>> right_combs; // possible combinations
+    vector<int> right_sums;               // total sum of the combinations (for checking
                                                // (k/2)-proximity)
     bool halt_flag = false;
     for (uint j = i + 1; j < variants.size() && !halt_flag; ++j) {
@@ -348,7 +348,7 @@ private: // methods
 
       if (right_combs.empty()) { // first var to be added
         if (are_near(*mid_v, *curr_v, k)) {
-          std::vector<int> new_comb(1, (int)j);
+          vector<int> new_comb(1, (int)j);
           right_combs.push_back(new_comb);
           right_sums.push_back(curr_v->ref_size - curr_v->min_size);
         }
@@ -356,7 +356,7 @@ private: // methods
 	// add the var to all the compatible combinations
 	bool added_flag = false;
 	for (uint c = 0; c < right_combs.size(); ++c) {
-	  std::vector<int> comb = right_combs[c];
+	  vector<int> comb = right_combs[c];
 	  int sum = right_sums[c];
 
 	  Variant *last_v_in_comb = &variants[comb.back()];
@@ -371,11 +371,11 @@ private: // methods
 	}
 	if (!added_flag) {
 	  // if the var has not been added to any combination
-	  std::vector<std::vector<int>> new_right_combs;
-	  std::vector<int> new_right_sums;
+	  vector<vector<int>> new_right_combs;
+	  vector<int> new_right_sums;
 	  for (uint c = 0; c < right_combs.size(); ++c) {
 	    // shorten the combinations and try to add the var
-	    std::vector<int> new_comb = right_combs[c];
+	    vector<int> new_comb = right_combs[c];
 	    int new_sum = right_sums[c];
 
 	    Variant *last_v_in_comb = &variants[new_comb.back()];
@@ -416,10 +416,10 @@ private: // methods
    *   - overlapping variants
    *   - gt-compatibility
    **/
-  std::vector<std::vector<int>> get_combs_on_the_left(const int &i) {
+  vector<vector<int>> get_combs_on_the_left(const int &i) {
     Variant *mid_v = &variants[i];
-    std::vector<std::vector<int>> left_combs; // possible combinations
-    std::vector<int> left_sums; // total sum of the combinations (for checking
+    vector<vector<int>> left_combs; // possible combinations
+    vector<int> left_sums; // total sum of the combinations (for checking
                                 // (k/2)-proximity)
 
     bool halt_flag = false;
@@ -434,7 +434,7 @@ private: // methods
 
       if (left_combs.empty()) { // first var to be added
         if (are_near(*curr_v, *mid_v, k)) {
-          std::vector<int> new_comb(1, (int)j);
+          vector<int> new_comb(1, (int)j);
           left_combs.push_back(new_comb);
           left_sums.push_back(curr_v->ref_size - curr_v->min_size);
         }
@@ -442,7 +442,7 @@ private: // methods
 	// add the var to all the compatible combinations
 	bool added_flag = false;
 	for (uint c = 0; c < left_combs.size(); ++c) {
-	  std::vector<int> comb = left_combs[c];
+	  vector<int> comb = left_combs[c];
 	  int sum = left_sums[c];
 
 	  Variant *last_v_in_comb = &variants[comb.back()];
@@ -457,11 +457,11 @@ private: // methods
 	}
 	if (!added_flag) {
 	  // if the var has not been added to any combination
-	  std::vector<std::vector<int>> new_left_combs;
-	  std::vector<int> new_left_sums;
+	  vector<vector<int>> new_left_combs;
+	  vector<int> new_left_sums;
 	  for (uint c = 0; c < left_combs.size(); ++c) {
 	    // shorten the combinations and try to add the var
-	    std::vector<int> new_comb = left_combs[c];
+	    vector<int> new_comb = left_combs[c];
 	    int new_sum = left_sums[c];
 
 	    Variant *last_v_in_comb = &variants[new_comb.back()];
@@ -499,33 +499,33 @@ private: // methods
    * Combine all left_combs with all right_combs, and placing i-th variant
    *between them
    **/
-  std::vector<std::vector<int>>
-  combine_combs(std::vector<std::vector<int>> &left_combs,
-                const std::vector<std::vector<int>> &right_combs,
+  vector<vector<int>>
+  combine_combs(vector<vector<int>> &left_combs,
+                const vector<vector<int>> &right_combs,
                 const int &i) {
-    std::vector<std::vector<int>> full_combs;
+    vector<vector<int>> full_combs;
     if (left_combs.empty() && right_combs.empty()) {
-      std::vector<int> comb;
+      vector<int> comb;
       comb.push_back(i);
       full_combs.push_back(comb);
     } else if (left_combs.empty()) {
-      std::vector<int> lcomb;
+      vector<int> lcomb;
       lcomb.push_back(i);
-      std::vector<int> comb = lcomb;
-      for (const std::vector<int> &rcomb : right_combs) {
+      vector<int> comb = lcomb;
+      for (const vector<int> &rcomb : right_combs) {
         extend(comb, rcomb);
         full_combs.push_back(comb);
         comb = lcomb;
       }
     } else {
-      for (std::vector<int> &lcomb : left_combs) {
-        std::reverse(lcomb.begin(), lcomb.end());
+      for (vector<int> &lcomb : left_combs) {
+        reverse(lcomb.begin(), lcomb.end());
         lcomb.push_back(i);
-        std::vector<int> comb = lcomb;
+        vector<int> comb = lcomb;
         if (right_combs.empty()) {
           full_combs.push_back(comb);
         }
-        for (const std::vector<int> &rcomb : right_combs) {
+        for (const vector<int> &rcomb : right_combs) {
           extend(comb, rcomb);
           full_combs.push_back(comb);
           comb = lcomb;
@@ -538,8 +538,8 @@ private: // methods
   /**
    * Return the reference substring between considered variants
    **/
-  std::vector<std::string> get_ref_subs(const std::vector<int> &comb, const std::string &reference) {
-    std::vector<std::string> ref_subs;
+  vector<string> get_ref_subs(const vector<int> &comb, const string &reference) {
+    vector<string> ref_subs;
 
     int last_end = -1;
     for (const int &index : comb) {
@@ -548,7 +548,7 @@ private: // methods
         last_end = v->ref_pos + v->ref_size;
         continue;
       }
-      std::string ref_sub (reference,
+      string ref_sub (reference,
                            last_end,
                            v->ref_pos - last_end);
       ref_subs.push_back(ref_sub);
@@ -562,14 +562,14 @@ private: // methods
    * (used when gt information is unphased). Example: given 0/1, 1/3,
    * 1/1, I want: 0,1,1; 0,3,1; 1,1,1; 1,3,1 (with repetitions).
    **/
-  std::vector<std::vector<std::string>> combine_haplotypes(std::vector<std::string> hap1,
-					      std::vector<std::string> hap2) {
+  vector<vector<string>> combine_haplotypes(vector<string> hap1,
+					      vector<string> hap2) {
     int n = hap1.size(); // number of alleles in each haplotype
     int N = pow(2, n-1); // number of possible haplotypes
-    std::vector<std::vector<std::string>> HAPs (2*N, std::vector<std::string>(n));
+    vector<vector<string>> HAPs (2*N, vector<string>(n));
 
     for(int level=0; level<n; ++level) {
-      std::vector<std::string> alleles ({hap1[level], hap2[level]});
+      vector<string> alleles ({hap1[level], hap2[level]});
       int rep = pow(2, n-1-level);
 
       for(int col=0; col<N; ++col) {
@@ -585,17 +585,17 @@ private: // methods
    * with respect to GTs.
    * !!! For now, I'm assuming phased GT !!!
    **/
-  std::set<std::vector<std::string>>
-  build_alleles_combs(const std::vector<int> &comb,
+  set<vector<string>>
+  build_alleles_combs(const vector<int> &comb,
                                   const int &central_index) {
     // A set to avoid duplicate elements
-    std::set<std::vector<std::string>> aacs;
+    set<vector<string>> aacs;
     Variant *central_v = &variants[central_index];
     // For each individual having this variant
     for (int gt_i = 0; gt_i<(int)central_v->genotypes.size(); ++gt_i) {
       bool phased_combination = true;
-      std::vector<std::string> hap1;
-      std::vector<std::string> hap2;
+      vector<string> hap1;
+      vector<string> hap2;
       for (const int &j : comb) {
 	phased_combination &= variants[j].phasing[gt_i];
         hap1.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].first));
@@ -606,7 +606,7 @@ private: // methods
 	aacs.insert(hap1);
 	aacs.insert(hap2);
       } else {
-	std::vector<std::vector<std::string>> all_haplotypes = combine_haplotypes(hap1, hap2);
+	vector<vector<string>> all_haplotypes = combine_haplotypes(hap1, hap2);
 	for(const auto hap : all_haplotypes) {
 	  aacs.insert(hap);
 	}
