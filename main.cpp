@@ -41,10 +41,8 @@
 #include "argument_parser.hpp"
 #include "bloom_filter.hpp"
 #include "variant.hpp"
-// #include "var_block.hpp"
+#include "var_block.hpp"
 #include "kmap.hpp"
-
-typedef map<int, map<int, vector<vector<string>>>> VK_GROUP;
 
 using namespace std;
 
@@ -197,32 +195,42 @@ int main(int argc, char *argv[]) {
   // BF context_bf(opt::bf_size);
 
   vector<string> used_seq_names;
-  // VB vb(opt::k, opt::error_rate);
-  // string last_seq_name = "";
+  VB vb(opt::k, opt::error_rate);
 
   int i = 0;
   vcf_record->max_unpack = BCF_UN_INFO;
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
     bcf_unpack(vcf_record, BCF_UN_INFO);
     Variant v(vcf, vcf_header, vcf_record, opt::freq_key);
-    v.fill_genotypes();
-  //   ++i;
-  //   if(i%5000 == 0) {
-  //     string log_line = "Processed " + to_string(i) + " variants";
-  //     pelapsed(log_line, true);
-  //   }
 
-  //   // In the first iteration, we set last_seq_name
-  //   if(last_seq_name.size() == 0) {
-  //     last_seq_name = v.seq_name;
-  //     used_seq_names.push_back(last_seq_name);
-  //   }
+    // We do not consider variants with <CN> or not present in
+    // considered samples, i.e. a priori frequency of ref allele = 1
+    // (i.e. 0|0 for all samples)
+    if (!v.has_alts or !v.is_present)
+      continue;
 
-  //   // We do not consider variants with <CN> or not present in
-  //   // considered samples, i.e. 0|0 for all samples
-  //   if (!v.has_alts or !v.is_present)
-  //     continue;
+    // We store the contig name (we assume VCF to be ordered, i.e.,
+    // contigs are not mixed up)
+    if(used_seq_names.empty() || v.seq_name.compare(used_seq_names.back()) != 0)
+      used_seq_names.push_back(v.seq_name);
 
+    // v.fill_genotypes();
+
+    //   ++i;
+    //   if(i%5000 == 0) {
+    //     string log_line = "Processed " + to_string(i) + " variants";
+    //     pelapsed(log_line, true);
+    //   }
+
+    if(!vb.empty() && (!vb.get_last().is_rknear_to(v, opt::k) || v.seq_name.compare(used_seq_names.back()) != 0)) {
+      // VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
+      // add_kmers_to_bf(bf, ref_bf, kmers);
+      vb.clear();
+      if(v.seq_name.compare(used_seq_names.back()) != 0)
+	used_seq_names.push_back(v.seq_name);
+    }
+    vb.add_variant(v);
+  }
   //   if (vb.empty()) {
   //     vb.add_variant(v);
   //     continue;
@@ -254,7 +262,6 @@ int main(int argc, char *argv[]) {
   //   VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
   //   add_kmers_to_bf(bf, ref_bf, kmers);
   //   vb.clear();
-  }
   string log_line = "Processed " + to_string(i) + " variants";
   pelapsed(log_line);
 

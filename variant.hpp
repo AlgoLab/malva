@@ -42,11 +42,11 @@ struct GT { // This name is already used in variant.hpp
     quality = 0;
   }
 
-  GT(uint8_t a1_, uint8_t a2_, bool phased_, long double quality_ = 0) {
-    a1 = a1_;
-    a2 = a2_;
-    phased = phased_ || a1 == a2;
-    quality = quality_;
+  GT(uint8_t _a1, uint8_t _a2, bool _phased, long double _quality = 0) {
+    a1 = _a1;
+    a2 = _a2;
+    phased = _phased || a1 == a2;
+    quality = _quality;
   }
 
   string to_str() {
@@ -85,6 +85,10 @@ struct Variant {
   vector<GT> computed_gts;        // Computed genotypes
 
   Variant() {}
+
+  ~Variant() {
+    ks_free(vcf_line); // is this enough?
+  }
 
   Variant(htsFile *vcf, bcf_hdr_t *vcf_header, bcf1_t *vcf_record, const string &freq_key) {
     vcf_line = new kstring_t();
@@ -227,6 +231,16 @@ struct Variant {
       samples = next_tab+1;
     }
     ks_free(vcf_line);
+  }
+
+  /**
+   * Return true if variant v is k/2-near (on the right) to this
+   * variant. The "sum_to_add" variable must be used when
+   * "concatenating" more variants (reference may expand or shrink due
+   * to indels).
+   **/
+  bool is_rknear_to(const Variant &v, const int &k, const int &sum_to_add = 0) {
+    return ref_pos + ref_size - min_size - 1 + sum_to_add + ceil((float)k / 2) >= v.ref_pos;
   }
 
   /**
