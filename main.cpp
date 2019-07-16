@@ -155,6 +155,17 @@ unordered_map<string, string> extract_chrom_sequences(kseq_t *reference) {
   return refs;
 }
 
+void analyze_blocks(vector<VB> &vbs, const unordered_map<string, string> &refs) {
+#pragma omp parallel for num_threads (opt::n_threads) shared (vbs, refs)
+  for(uint i = 0; i<vbs.size(); ++i) {
+    for(Variant &v : vbs[i]) {
+      v.fill_genotypes();
+      v.free();
+    }
+    vbs[i].store_signatures(refs.at(vbs[i].front().seq_name));
+  }
+}
+
 int main(int argc, char *argv[]) {
   hts_set_log_level(HTS_LOG_OFF);
 
@@ -195,12 +206,12 @@ int main(int argc, char *argv[]) {
   // BF context_bf(opt::bf_size);
 
   vector<string> used_seq_names;
-  VB vb(opt::k, opt::error_rate);
+  // VB vb(opt::k, opt::error_rate);
+  vector<VB> vbs (1, VB(opt::k, opt::error_rate));
 
-  int i = 0;
   vcf_record->max_unpack = BCF_UN_INFO;
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
-    bcf_unpack(vcf_record, BCF_UN_INFO);
+    bcf_unpack(vcf_record, BCF_UN_INFO); // Here we unpack till INFO field (no FORMAT and SAMPLES)
     Variant v(vcf, vcf_header, vcf_record, opt::freq_key);
 
     // We do not consider variants with <CN> or not present in
@@ -214,22 +225,25 @@ int main(int argc, char *argv[]) {
     if(used_seq_names.empty() || v.seq_name.compare(used_seq_names.back()) != 0)
       used_seq_names.push_back(v.seq_name);
 
-    // v.fill_genotypes();
-
-    //   ++i;
-    //   if(i%5000 == 0) {
-    //     string log_line = "Processed " + to_string(i) + " variants";
-    //     pelapsed(log_line, true);
-    //   }
-
-    if(!vb.empty() && (!vb.get_last().is_rknear_to(v, opt::k) || v.seq_name.compare(used_seq_names.back()) != 0)) {
-      // VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
+    VB *vb = &(vbs.back());
+    if(!vb->empty() && (!vb->back().is_rknear_to(v, opt::k) || v.seq_name.compare(used_seq_names.back()) != 0)) {
       // add_kmers_to_bf(bf, ref_bf, kmers);
-      vb.clear();
+
+      if(vbs.size() == 5000) { // we can process the blocks
+	analyze_blocks(vbs, refs);
+	vbs.clear();
+      }
+
+      vbs.push_back(VB(opt::k, opt::error_rate));
       if(v.seq_name.compare(used_seq_names.back()) != 0)
 	used_seq_names.push_back(v.seq_name);
     }
-    vb.add_variant(v);
+    // Here we cannot use pointer vb since we could have add a new vb to the vector
+    vbs.back().add_variant(v);
+  }
+  if(!vbs.empty()) {
+    analyze_blocks(vbs, refs);
+    vbs.clear();
   }
   //   if (vb.empty()) {
   //     vb.add_variant(v);
@@ -262,8 +276,6 @@ int main(int argc, char *argv[]) {
   //   VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
   //   add_kmers_to_bf(bf, ref_bf, kmers);
   //   vb.clear();
-  string log_line = "Processed " + to_string(i) + " variants";
-  pelapsed(log_line);
 
   bcf_hdr_destroy(vcf_header);
   bcf_destroy(vcf_record);

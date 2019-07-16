@@ -28,7 +28,7 @@
 
 #include "kstring.h"
 
-// typedef pair<string, long double> GT;
+typedef vector<string> signature;
 
 struct GT { // This name is already used in variant.hpp
   uint8_t a1, a2;
@@ -61,39 +61,37 @@ struct GT { // This name is already used in variant.hpp
   }
 };
 
-
 struct Variant {
-  kstring_t *vcf_line;            // kstring_t from the vcf
-  string seq_name;                // Chromosome/Contig
-  int ref_pos;                    // Variant position 0-based
-  string idx;                     // ID
-  string ref_sub;                 // Reference base{s}
-  vector<string> alts;            // List of alternatives
-  float quality;                  // Quality field
-  string filter;                  // Filter field
-  string info;                    // Info field
-  vector<GT> genotypes;           // Genotypes/Samples
-  vector<bool> phasing;           // true if genotype i-th is phased, false otherwise
-  int n_individuals;              // Number of samples
-  int ref_size;                   // Len of reference base{s}
-  int min_size;                   // Length of the shortest string (ref and alts)
-  int max_size;                   // Length of the longest string (ref and alts)
-  bool has_alts = true;           // false if no alternatives, i.e. only <CN>
-  bool is_present = true;         // false if no sample has this variant
-  vector<float> frequencies;      // Allele frequency in the considered population
-  vector<float> coverages;        // Allele coverages (computed from input sample)
-  vector<GT> computed_gts;        // Computed genotypes
+  kstring_t vcf_line;                   // kstring_t from the vcf
+  string seq_name;                      // Chromosome/Contig
+  int ref_pos;                          // Variant position 0-based
+  string idx;                           // ID
+  string ref_sub;                       // Reference base{s}
+  vector<string> alts;                  // List of alternatives
+  float quality;                        // Quality field
+  string filter;                        // Filter field
+  string info;                          // Info field
+  vector<GT> genotypes;                 // Genotypes/Samples
+  vector<bool> phasing;                 // true if genotype i-th is phased, false otherwise
+  int n_individuals;                    // Number of samples
+  int ref_size;                         // Len of reference base{s}
+  int min_size;                         // Length of the shortest string (ref and alts)
+  int max_size;                         // Length of the longest string (ref and alts)
+  bool has_alts = true;                 // false if no alternatives, i.e. only <CN>
+  bool is_present = true;               // false if no sample has this variant
+  vector<float> frequencies;            // Allele frequency in the considered population
+  vector<float> coverages;              // Allele coverages (computed from input sample)
+  vector<vector<signature>> SIGNS;      // Alleles' signatures
+  vector<GT> computed_gts;              // Computed genotypes
 
   Variant() {}
 
-  ~Variant() {
-    ks_free(vcf_line); // is this enough?
-  }
+  ~Variant() {}
 
   Variant(htsFile *vcf, bcf_hdr_t *vcf_header, bcf1_t *vcf_record, const string &freq_key) {
-    vcf_line = new kstring_t();
-    ks_initialize(vcf_line);
-    kputsn(vcf->line.s, vcf->line.l, vcf_line);
+    // vcf_line = new kstring_t();
+    ks_initialize(&vcf_line);
+    kputsn(vcf->line.s, vcf->line.l, ks_clear(&vcf_line));
 
     seq_name = bcf_hdr_id2name(vcf_header, vcf_record->rid);
     ref_pos = vcf_record->pos;
@@ -107,6 +105,7 @@ struct Variant {
     ref_size = (int)ref_sub.size();
     extract_alternative_alleles(vcf_record);
     coverages.resize(alts.size() + 1, 0); //+1 for the reference allele
+    SIGNS.resize(alts.size() + 1, vector<signature>()); //+1 for the reference allele
     quality = vcf_record->qual;
     filter = "PASS"; // TODO: get filter string from VCF
     info = ".";      // TODO: get info string from VCF
@@ -117,6 +116,16 @@ struct Variant {
       extract_frequencies(vcf_header, vcf_record, freq_key);
   }
 
+  // If we want, we can use pointers in main to avoid this function
+  // and call ks_free directly from the destructor (I think). Right
+  // now, we cannot call it from there since the kstring would be
+  // freed more than once ("double free or corruption"). Now we have
+  // to call this function manually when we know that we would not use
+  // the variant anymore.
+  void free() {
+    ks_free(&vcf_line);
+  }
+  
   /**
    * Parse the alternative alleles and fill the corresponding vector.
    **/
@@ -169,21 +178,21 @@ struct Variant {
    * Given the kstring_t, cut the prefix and returns the suffix
    * containing only the samples. [used by fill_genotypes]
    **/
-  char* get_samples(char *vcf_line) {
+  char* get_samples(char *line) {
     int offset = 0;
     char* fmt_suffix;
     int fmt_size = 0;
     bool fmt_flag = false;
     while(!fmt_flag) {
-      offset += strlen(vcf_line + offset) + 1;
+      offset += strlen(line + offset) + 1;
       /**
        * From VCF format specification: "The first sub-field must always
        * be the genotype (GT) if it is present. There are no required
        * sub-fields."
        **/
-      if(strncmp(vcf_line + offset, "GT\t", 3) == 0 || strncmp(vcf_line + offset, "GT:", 3) == 0) {
+      if(strncmp(line + offset, "GT\t", 3) == 0 || strncmp(line + offset, "GT:", 3) == 0) {
 	fmt_flag = true;
-	fmt_suffix = vcf_line + offset;
+	fmt_suffix = line + offset;
 	char* fmt_end = strchr(fmt_suffix, '\t');
 	if(fmt_end==NULL) {
 	  cerr << "Error - No samples" << endl;
@@ -192,7 +201,7 @@ struct Variant {
 	fmt_size = fmt_end - fmt_suffix;
       }
     }
-    return vcf_line + offset + fmt_size + 1;
+    return line + offset + fmt_size + 1;
   }
 
   /**
@@ -200,7 +209,7 @@ struct Variant {
    * by fill_genotypes]
    **/
   GT extract_genotype(char* gt) {
-    if(!strcmp(gt, ".")) {
+    if(!strcmp(gt, ".") or !strcmp(gt, "./.") or !strcmp(gt, ".|.")) {
       return GT();
     }
     bool phased = strchr(gt, '/') != NULL;
@@ -209,6 +218,10 @@ struct Variant {
     all1 = atoi(all);
     all = strtok(NULL,"/|");
     all2 = all==NULL ? all1 : atoi(all);
+    if(all1 > alts.size() || all2 > alts.size()) {
+      cerr << all1 << " " << all2 << " " << idx << endl;
+      exit(1);
+    } 
     return GT(all1, all2, phased);
   }
 
@@ -220,7 +233,7 @@ struct Variant {
     genotypes.resize(n_individuals);
     phasing.resize(n_individuals);
 
-    char *samples = get_samples(vcf_line->s);
+    char *samples = get_samples(vcf_line.s);
     int i = 0;
     for(;;) {
       char *next_tab = strchr(samples, '\t');
@@ -230,19 +243,26 @@ struct Variant {
       if(next_tab == NULL) break;
       samples = next_tab+1;
     }
-    ks_free(vcf_line);
   }
 
   /**
    * Return true if variant v is k/2-near (on the right) to this
-   * variant. The "sum_to_add" variable must be used when
-   * "concatenating" more variants (reference may expand or shrink due
-   * to indels).
+   * variant (|--- this -- v --->). The "sum_to_add" variable must be
+   * used when "concatenating" more variants (reference may expand or
+   * shrink due to indels).
    **/
-  bool is_rknear_to(const Variant &v, const int &k, const int &sum_to_add = 0) {
+  bool is_rknear_to(const Variant &v, const int &k, const int &sum_to_add = 0) const {
     return ref_pos + ref_size - min_size - 1 + sum_to_add + ceil((float)k / 2) >= v.ref_pos;
   }
 
+  /**
+   * Return true if this variant overlaps with variant v
+   * i.e. they are incompatible
+   **/
+  bool overlaps_with(const Variant &v) const {
+    return (ref_pos <= v.ref_pos) && (v.ref_pos < ref_pos + ref_size);
+  }
+  
   /**
    * Return the i-th allele, 0 is the reference
    **/
@@ -272,6 +292,11 @@ struct Variant {
   void set_coverage(const int &i, const float &cov) {
     // maybe we can add some control here
     coverages[i] = cov;
+  }
+
+  void add_signature(const string &allele, const signature &S) {
+    int allele_index = get_allele_index(allele);
+    SIGNS[allele_index].push_back(S);
   }
 
   void add_genotype(const GT &gt) {
