@@ -72,7 +72,6 @@ struct Variant {
   string filter;                        // Filter field
   string info;                          // Info field
   vector<GT> genotypes;                 // Genotypes/Samples
-  vector<bool> phasing;                 // true if genotype i-th is phased, false otherwise
   int n_individuals;                    // Number of samples
   int ref_size;                         // Len of reference base{s}
   int min_size;                         // Length of the shortest string (ref and alts)
@@ -212,16 +211,16 @@ struct Variant {
     if(!strcmp(gt, ".") or !strcmp(gt, "./.") or !strcmp(gt, ".|.")) {
       return GT();
     }
-    bool phased = strchr(gt, '/') != NULL;
+    bool phased = strchr(gt, '|') != NULL;
     int all1, all2;
-    char *all = strtok (gt,"/|");
+    char *gt_ptr;
+    char *all = strtok_r(gt,"/|", &gt_ptr);
     all1 = atoi(all);
-    all = strtok(NULL,"/|");
+    all = strtok_r(NULL,"/|", &gt_ptr);
     all2 = all==NULL ? all1 : atoi(all);
-    if(all1 > alts.size() || all2 > alts.size()) {
-      cerr << all1 << " " << all2 << " " << idx << endl;
-      exit(1);
-    } 
+
+    assert(all1 > alts.size() && all2 > alts.size());
+
     return GT(all1, all2, phased);
   }
 
@@ -231,13 +230,13 @@ struct Variant {
    **/
   void fill_genotypes() {
     genotypes.resize(n_individuals);
-    phasing.resize(n_individuals);
 
     char *samples = get_samples(vcf_line.s);
     int i = 0;
     for(;;) {
       char *next_tab = strchr(samples, '\t');
-      char *gtc = strtok(samples,":\t");
+      char *gt_ptr;
+      char *gtc = strtok_r(samples,":\t", &gt_ptr);
       GT gt = extract_genotype(gtc);
       genotypes[i] = gt;
       if(next_tab == NULL) break;

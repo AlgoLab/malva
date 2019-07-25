@@ -48,7 +48,7 @@ public:
   }
   ~VB() {}
 
-  int size() { return variants.size(); }
+  int size() const { return variants.size(); }
   bool empty() { return variants.empty(); }
   void clear() { variants.clear(); }
   Variant front() { return variants.front(); }
@@ -90,75 +90,6 @@ public:
 	}
       }
     }
-  }
-
-  pair<string, signature> build_signature(const string &reference, const int &v_index, const vector<int> &var_comb, const vector<string> &ref_subs, const vector<string> &all_comb) {
-    string mid_allele;
-    signature S;
-    
-    if (all_comb.size() == 1 && all_comb[0].size() >= (uint)k) {
-      mid_allele = all_comb[0];
-
-      string kmer = mid_allele.substr(0, k);
-      transform(kmer.begin(), kmer.end(), kmer.begin(), ::toupper);
-      S.push_back(kmer);
-      
-      for (uint p = k; p < mid_allele.size(); ++p) {
-	char c = toupper(mid_allele[p]);
-	kmer.erase(0, 1);
-	kmer += c;
-	S.push_back(kmer);
-      }
-    } else {
-      string kmer = "";
-      int mid_pos_in_kmer = 0;
-      for (uint j = 0; j < all_comb.size(); ++j) {
-	string rs;
-	if (j >= ref_subs.size())
-	  rs = "";
-	else
-	  rs = ref_subs[j];
-	
-	// Store the position of the mid allele and the mid allele inside
-	// the kmer to use later for extending the kmer
-	if (var_comb[j] == (int)v_index) {
-	  mid_pos_in_kmer = kmer.size();
-	  mid_allele = all_comb[j];
-	}
-	kmer += all_comb[j] + rs;
-      }
-      
-      // Get how much we must extend or cut
-      int first_part_size = mid_pos_in_kmer + mid_allele.size() / 2;
-      int second_part_size = kmer.size() - first_part_size;
-      int missing_prefix = k / 2 - first_part_size;
-      int missing_suffix = ceil((float)k / 2) - second_part_size;
-      
-      // Extending/cutting on the left
-      if (missing_prefix >= 0) {
-	Variant *first_var_in_comb = &variants[var_comb.front()];
-	string prefix (reference,
-		       first_var_in_comb->ref_pos - missing_prefix,
-		       missing_prefix);
-	kmer = prefix + kmer;
-      } else
-	kmer.erase(0, abs(missing_prefix));
-      
-      // extending/cutting on the right
-      if (missing_suffix >= 0) {
-	Variant *last_var_in_comb = &variants[var_comb.back()];
-	string suffix (reference,
-		       last_var_in_comb->ref_pos + last_var_in_comb->ref_size,
-		       missing_suffix);
-	kmer += suffix;
-      } else
-	kmer.erase(kmer.size() - abs(missing_suffix),
-		   abs(missing_suffix));
-      transform(kmer.begin(), kmer.end(), kmer.begin(), ::toupper);
-      
-      S.push_back(kmer);
-    }
-    return make_pair(mid_allele, S);
   }
 
 //   /**
@@ -285,6 +216,79 @@ private: // methods
 
   //- Methods for kmers generation  ----------------------------------
   //------------------------------------------------------------------
+  /**
+   * Given a variant and one of the haplotype (represented as three
+   * vector), builds the corresponding signature.
+   **/
+  pair<string, signature> build_signature(const string &reference, const int &v_index, const vector<int> &var_comb, const vector<string> &ref_subs, const vector<string> &all_comb) {
+    string mid_allele;
+    signature S;
+
+    if (all_comb.size() == 1 && all_comb[0].size() >= (uint)k) {
+      mid_allele = all_comb[0];
+
+      string kmer = mid_allele.substr(0, k);
+      transform(kmer.begin(), kmer.end(), kmer.begin(), ::toupper);
+      S.push_back(kmer);
+
+      for (uint p = k; p < mid_allele.size(); ++p) {
+	char c = toupper(mid_allele[p]);
+	kmer.erase(0, 1);
+	kmer += c;
+	S.push_back(kmer);
+      }
+    } else {
+      string kmer = "";
+      int mid_pos_in_kmer = 0;
+      for (uint j = 0; j < all_comb.size(); ++j) {
+	string rs;
+	if (j >= ref_subs.size())
+	  rs = "";
+	else
+	  rs = ref_subs[j];
+
+	// Store the position of the mid allele and the mid allele inside
+	// the kmer to use later for extending the kmer
+	if (var_comb[j] == (int)v_index) {
+	  mid_pos_in_kmer = kmer.size();
+	  mid_allele = all_comb[j];
+	}
+	kmer += all_comb[j] + rs;
+      }
+
+      // Get how much we must extend or cut
+      int first_part_size = mid_pos_in_kmer + mid_allele.size() / 2;
+      int second_part_size = kmer.size() - first_part_size;
+      int missing_prefix = k / 2 - first_part_size;
+      int missing_suffix = ceil((float)k / 2) - second_part_size;
+
+      // Extending/cutting on the left
+      if (missing_prefix >= 0) {
+	Variant *first_var_in_comb = &variants[var_comb.front()];
+	string prefix (reference,
+		       first_var_in_comb->ref_pos - missing_prefix,
+		       missing_prefix);
+	kmer = prefix + kmer;
+      } else
+	kmer.erase(0, abs(missing_prefix));
+
+      // extending/cutting on the right
+      if (missing_suffix >= 0) {
+	Variant *last_var_in_comb = &variants[var_comb.back()];
+	string suffix (reference,
+		       last_var_in_comb->ref_pos + last_var_in_comb->ref_size,
+		       missing_suffix);
+	kmer += suffix;
+      } else
+	kmer.erase(kmer.size() - abs(missing_suffix),
+		   abs(missing_suffix));
+      transform(kmer.begin(), kmer.end(), kmer.begin(), ::toupper);
+
+      S.push_back(kmer);
+    }
+    return make_pair(mid_allele, S);
+  }
+
   /**
    * Given a mid variant, builds all the possible combinations on the right.
    * In building them, we check for:
@@ -551,11 +555,10 @@ private: // methods
       vector<string> hap1;
       vector<string> hap2;
       for (const int &j : comb) {
-  	phased_combination &= variants[j].phasing[gt_i];
-        hap1.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].a1));
-  	hap2.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].a2));
+	phased_combination &= variants[j].genotypes[gt_i].phased;
+	hap1.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].a1));
+	hap2.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].a2));
       }
-
       if(phased_combination) {
   	all_combs.insert(hap1);
   	all_combs.insert(hap2);
