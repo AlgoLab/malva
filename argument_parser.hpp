@@ -52,7 +52,7 @@ static string samples = "-";
 static string freq_key = "AF";
 static uint max_coverage = 200;
 static uint64_t bf_size = ((uint64_t)0b1 << 35);
-static bool verbose = false;
+// static bool verbose = false;
 static size_t n_threads = 1;
 static string fasta_path;
 static string vcf_path;

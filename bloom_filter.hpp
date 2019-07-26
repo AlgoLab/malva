@@ -80,11 +80,6 @@ public:
     _bf[hash % _size] = 1;
   }
 
-  void add_refkey(const char *kmer) {
-    uint64_t hash = _get_hash(kmer);
-    _bf[hash % _size] = 0;
-  }
-
   bool test_key(const char *kmer) const {
     uint64_t hash = _get_hash(kmer);
     return _bf[hash % _size];

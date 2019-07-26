@@ -64,10 +64,6 @@ public:
     variants.push_back(v);
   }
 
-  // void set_variant_coverage(const int &v, const int &i, const float &cov) {
-  //   variants[v].set_coverage(i, cov);
-  // }
-
   // Variant get_variant(const int &i) const { return variants[i]; }
 
 
@@ -92,123 +88,96 @@ public:
     }
   }
 
-//   /**
-//    * Method to compute and store the genotype of each variant of the block.
-//    **/
-//   void genotype(const int &max_cov) {
-//     for (uint i = 0; i < variants.size(); ++i) {
-//       Variant *v = &variants[i];
+  /**
+   * Method to compute and store the genotype of each variant of the block.
+   **/
+  void genotype(const int &max_cov) {
+    for (uint i = 0; i < variants.size(); ++i) {
+      Variant *v = &variants[i];
 
-//       // If some allele is too covered, assign 0/0 and continue
-//       bool continue_flag = false;
-//       for(const int &cov : v->coverages) {
-//         if(cov > max_cov) {
-//           GT gt = make_pair("0/0", 1);
-//           v->add_genotype(gt);
-//           continue_flag = true;
-//           continue;
-//         }
-//       }
-//       if(continue_flag)
-//         continue;
+      // If some allele is too covered, assign 0/0 and continue
+      bool continue_flag = false;
+      for(const int &cov : v->coverages) {
+	if(cov > max_cov) {
+	  GT gt(0, 0, false, 1);
+	  v->set_genotype(gt);
+	  continue_flag = true;
+	  continue;
+	}
+      }
+      if(continue_flag)
+	continue;
 
-//       // The variant wasn't present in any sample: we have only the
-//       // coverage of the reference allele
-//       if (v->coverages.size() == 1) {
-//         GT gt = make_pair("0/0", 1);
-//         v->add_genotype(gt);
-//         continue;
-//       }
+      // The variant wasn't present in any sample: we have only the
+      // coverage of the reference allele
+      if (v->coverages.size() == 1) {
+	GT gt(0, 0, false, 1);
+	v->set_genotype(gt);
+	continue;
+      }
 
-//       long double max_prob = 0.0;
-//       string best_geno = "0/0";
-//       for (uint g1 = 0; g1 < v->coverages.size(); ++g1) {
-//         for (uint g2 = g1; g2 < v->coverages.size(); ++g2) {
-//           long double prior;
-//           long double posterior;
-//           long double total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
-//           if (g1 == g2) {
-//             prior = pow(v->frequencies[g1], 2);
-//             long double truth = v->coverages[g1];
-//             long double error = total_sum - truth;
-//             posterior = binomial(truth + error, truth) *
-//               pow(1 - error_rate, truth) * pow(error_rate/(v->coverages.size() - 1), error);
-//           } else {
-//             prior = 2 * v->frequencies[g1] * v->frequencies[g2];
-//             long double truth1 = v->coverages[g1];
-//             long double truth2 = v->coverages[g2];
-//             long double error = total_sum - truth1 - truth2;
-//             posterior = binomial(truth1 + truth2 + error, truth1 + truth2) *
-//               binomial(truth1 + truth2, truth1) *
-//               pow((1 - error_rate) / 2, truth1) *
-//               pow((1 - error_rate) / 2, truth2) * pow(error_rate/(v->coverages.size() - 2), error);
-//           }
+      long double max_prob = 0.0;
+      long double tot_prob = 0.0;
+      int best_a1 = 0;
+      int best_a2 = 0;
+      for (uint a1 = 0; a1 < v->coverages.size(); ++a1) {
+	for (uint a2 = a1; a2 < v->coverages.size(); ++a2) {
+	  long double prior;
+	  long double posterior;
+	  long double total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
+	  if (a1 == a2) {
+	    prior = pow(v->frequencies[a1], 2);
+	    long double truth = v->coverages[a1];
+	    long double error = total_sum - truth;
+	    posterior = binomial(truth + error, truth) * pow(1 - error_rate, truth) * pow(error_rate/(v->coverages.size() - 1), error);
+	  } else {
+	    prior = 2 * v->frequencies[a1] * v->frequencies[a2];
+	    long double truth1 = v->coverages[a1];
+	    long double truth2 = v->coverages[a2];
+	    long double error = total_sum - truth1 - truth2;
+	    posterior = binomial(truth1 + truth2 + error, truth1 + truth2) *
+	      binomial(truth1 + truth2, truth1) *
+	      pow((1 - error_rate) / 2, truth1) *
+	      pow((1 - error_rate) / 2, truth2) *
+	      pow(error_rate/(v->coverages.size() - 2), error);
+	  }
 
-//           long double prob = prior * posterior;
-//           if (prob > max_prob) {
-//             max_prob = prob;
-//             best_geno = to_string(g1) + "/" + to_string(g2);
-//           }
-//           v->add_genotype(make_pair(to_string(g1) + "/" + to_string(g2), prob));
-//         }
-//       }
-//     }
-//   }
+	  long double prob = prior * posterior;
+	  tot_prob += prob;
+	  if (prob > max_prob) {
+	    max_prob = prob;
+	    best_a1 = a1;
+	    best_a2 = a2;
+	  }
+	}
+      }
+      GT gt(best_a1, best_a2, false, max_prob/tot_prob);
+      v->set_genotype(gt);
+    }
+  }
 
-//   /**
-//    * Method to output the variants of the block in VCF format.
-//    * ! Clean this method! In verbose mode, info field is hand-made
-//    * (no definition in header). Also filter is set to "PASS" -
-//    * see variant.hpp !
-//    **/
-//   void output_variants(const bool &verbose) {
-//     for (uint i = 0; i < variants.size(); ++i) {
-//       Variant *v = &variants[i];
-//       cout << v->seq_name << '\t' << v->ref_pos + 1 << '\t' << v->idx
-//                 << '\t' << v->ref_sub << '\t';
-//       uint varc = 0;
-//       for (const string &alt : v->alts) {
-//         cout << alt;
-//         ++varc;
-//         if (varc != v->alts.size())
-//           cout << ',';
-//       }
-//       string info = ".";
-//       if(verbose) {
-//         // Adds coverages to v->info (here I'm assuming v->info is '.')
-//         info = "COVS:";
-//         for(const auto &cov : v->coverages)
-//           info+=to_string(cov) + "-";
-//         info.pop_back();
-//       }
-//       // Adds gts to v->info
-//       string best_geno = "0/0";
-//       long double best_qual = 0;
-//       long double total_qual = 0.0;
-//       for(const auto gt : v->computed_gts) {
-//         total_qual += gt.second;
-//       }
-//       string geno = "";
-//       long double qual = 0.0;
-//       if(verbose)
-//         info += ";GTS:";
-//       for(const auto gt : v->computed_gts) {
-//         geno = gt.first;
-//         qual = gt.second / total_qual;
-//         if(qual > best_qual) {
-//           best_geno = geno;
-//           best_qual = qual;
-//         }
-//         if(verbose)
-//           info += geno + "_" + to_string(qual) + "-";
-//       }
-//       if(verbose)
-//         info.pop_back();
-//       cout << "\t" << v->quality << "\t" << v->filter << "\t" << info
-//                 << "\tGT:GQ\t" << best_geno << ":"
-//                 << (int)round(best_qual * 100) << "\n";
-//     }
-//   }
+  /**
+   * Method to output the variants of the block in VCF format.
+   * ! Clean this method! In verbose mode, info field is hand-made
+   * (no definition in header). Also filter is set to "PASS" -
+   * see variant.hpp !
+   **/
+  void print() {
+    for (uint i = 0; i < variants.size(); ++i) {
+      Variant *v = &variants[i];
+      cout << v->seq_name << '\t' << v->ref_pos + 1 << '\t' << v->idx
+	   << '\t' << v->ref_sub << '\t';
+      uint varc = 0;
+      for (const string &alt : v->alts) {
+	cout << alt;
+	++varc;
+	if (varc != v->alts.size())
+	  cout << ',';
+      }
+      cout << "\t" << v->quality << "\t" << v->filter << "\t" << "."
+	   << "\tGT:GQ\t" << v->computed_gt.to_str() << "\n";
+    }
+  }
 
 private: // methods
   // const VB &operator=(const VB &other) { return *this; }

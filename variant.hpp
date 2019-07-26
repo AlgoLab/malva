@@ -45,12 +45,13 @@ struct GT { // This name is already used in variant.hpp
   GT(uint8_t _a1, uint8_t _a2, bool _phased, long double _quality = 0) {
     a1 = _a1;
     a2 = _a2;
-    phased = _phased || a1 == a2;
+    phased = _phased; //|| a1 == a2;
     quality = _quality;
   }
 
+  // we could overload operator<<
   string to_str() {
-    return phased ? to_string(a1)+"|"+to_string(a2) : to_string(a1)+"/"+to_string(a2);
+    return phased ? to_string(a1)+"|"+to_string(a2)+":"+to_string((int)round(quality*100)) : to_string(a1)+"/"+to_string(a2)+":"+to_string((int)round(quality*100));
   }
 
   void print() {
@@ -81,7 +82,7 @@ struct Variant {
   vector<float> frequencies;            // Allele frequency in the considered population
   vector<float> coverages;              // Allele coverages (computed from input sample)
   vector<vector<signature>> SIGNS;      // Alleles' signatures
-  vector<GT> computed_gts;              // Computed genotypes
+  GT computed_gt;                       // Computed genotypes (best one)
 
   Variant() {}
 
@@ -219,7 +220,7 @@ struct Variant {
     all = strtok_r(NULL,"/|", &gt_ptr);
     all2 = all==NULL ? all1 : atoi(all);
 
-    assert(all1 > alts.size() && all2 > alts.size());
+    assert(all1 <= alts.size() && all2 <= alts.size());
 
     return GT(all1, all2, phased);
   }
@@ -298,9 +299,9 @@ struct Variant {
     SIGNS[allele_index].push_back(S);
   }
 
-  void add_genotype(const GT &gt) {
+  void set_genotype(const GT &gt) {
     // maybe we can add some control here
-    computed_gts.push_back(gt);
+    computed_gt = gt;
   }
 };
 

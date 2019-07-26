@@ -59,60 +59,36 @@ void pelapsed(const string &s = "", const bool rollback = false) {
 KSEQ_INIT(gzFile, gzread)
 
 /**
- * Method to add kmers to the bloom filter
+ * Method to compute and store the coverages of the alleles of the
+ * variants. It uses the coverages stored in the bloom filters/map.
  **/
-void add_kmers_to_bf(BF &bf, KMAP &ref_bf, const VK_GROUP &kmers) {
-  for (const auto &v : kmers) {
-    // For each variant
-    for (const auto &p : v.second) {
-      // For each allele of the variant
-      for (const auto &Ks : p.second) {
-        // For each list of kmers of the allele
-        for (const auto &kmer : Ks) {
-          // For each kmer in the kmer list
-	  if(p.first == 0)
-            ref_bf.add_key(kmer.c_str());
-	  else
-            bf.add_key(kmer.c_str());
-        }
+void set_coverages(vector<VB> &vbs, BF &bf, KMAP &ref_bf) {
+  for(uint vb_idx=0; vb_idx<vbs.size(); ++vb_idx) {
+    for(Variant &v : vbs[vb_idx]) {
+      for(uint all_idx = 0; all_idx<v.alts.size()+1; ++all_idx) {
+	float all_cov = 0.0;
+	for(const signature S : v.SIGNS[all_idx]) {
+	  float curr_cov = 0.0;
+	  int n = 0; // Number of kmers in the signature
+	  for(const string &kmer : S) {
+	    int w = 0;
+	    if(all_idx == 0)
+	      w = ref_bf.get_count(kmer.c_str());
+	    else
+	      w = bf.get_count(kmer.c_str());
+	    if(w>0) { //maybe useless
+	      curr_cov = (curr_cov * n + w) / (n + 1);
+	      ++n;
+	    }
+	  }
+	  if(curr_cov > all_cov)
+	    all_cov = curr_cov;
+	}
+	v.set_coverage(all_idx, all_cov);
       }
     }
   }
 }
-
-/**
- * Method to compute and store the coverages of the alleles of the
- * variants of a var_block. It uses the coverages stored in the bloom
- * filters/map.
- **/
-// void set_coverages(BF &bf, KMAP &ref_bf, VB &vb, const VK_GROUP &kmers/*, const float &cap*/) {
-//   for (const auto &var : kmers) {
-//     // For each variant
-//     Variant v = vb.get_variant(var.first);
-//     for (const auto &p : var.second) {
-//       float allele_cov = 0;
-//       for (const auto &Ks : p.second) {
-//         float curr_cov = 0;
-//         int n = 0; // Number of kmers in the signature
-//         for (const auto &kmer : Ks) {
-//           int w = 0;
-//           if(p.first == 0)
-//             w = ref_bf.get_count(kmer.c_str());
-//           else
-//             w = bf.get_count(kmer.c_str());
-//           if(w>0) { //maybe useless
-//             curr_cov = (curr_cov * n + w) / (n + 1);
-//             ++n;
-//           }
-//         }
-//         if(curr_cov > allele_cov)
-//           allele_cov = curr_cov;
-//       }
-//       // we can now set the allele coverage
-//       vb.set_variant_coverage(var.first, p.first, allele_cov);
-//     }
-//   }
-// }
 
 /**
  * Method to clean and print VCF header. It adds GT and GQ FORMAT,
@@ -141,7 +117,6 @@ void print_cleaned_header(bcf_hdr_t *vcf_header) {
 // ---------------------------------------------------------------------------
 
 unordered_map<string, string> extract_chrom_sequences(kseq_t *reference) {
-  pelapsed("Reference parsing");
   unordered_map<string, string> refs;
   int l;
   while ((l = kseq_read(reference)) >= 0) {
@@ -151,11 +126,39 @@ unordered_map<string, string> extract_chrom_sequences(kseq_t *reference) {
     string seq (reference->seq.s);
     refs[id] = seq;
   }
-  pelapsed("Reference processed");
   return refs;
 }
 
-void analyze_blocks(vector<VB> &vbs, const unordered_map<string, string> &refs) {
+// We can do better here...
+void fill_bf(BF &bf, const vector<signature> &Ss) {
+  for(const signature &S : Ss) {
+    for(const string &kmer : S) {
+      bf.add_key(kmer.c_str());
+    }
+  }
+}
+
+// ...and here
+void fill_rbf(KMAP &ref_bf, const vector<signature> &Ss) {
+  for(const signature &S : Ss) {
+    for(const string &kmer : S) {
+      ref_bf.add_key(kmer.c_str());
+    }
+  }
+}
+
+void fill_bfs(vector<VB> &vbs, BF &bf, KMAP &ref_bf) {
+  for(uint vb_idx=0; vb_idx<vbs.size(); ++vb_idx) {
+    for(const Variant &v : vbs[vb_idx]) {
+      fill_rbf(ref_bf, v.SIGNS[0]);
+      for(uint all_idx = 1; all_idx<v.alts.size()+1; ++all_idx) {
+	fill_bf(bf, v.SIGNS[all_idx]);
+      }
+    }
+  }
+}
+
+void build_signatures(vector<VB> &vbs, const unordered_map<string, string> &refs) {
 #pragma omp parallel for num_threads (opt::n_threads) shared (vbs, refs)
   for(uint i = 0; i<vbs.size(); ++i) {
     for(Variant &v : vbs[i]) {
@@ -164,6 +167,17 @@ void analyze_blocks(vector<VB> &vbs, const unordered_map<string, string> &refs) 
     }
     vbs[i].store_signatures(refs.at(vbs[i].front().seq_name));
   }
+}
+
+void compute_genotypes(vector<VB> &vbs) {
+#pragma omp parallel for num_threads (opt::n_threads) shared (vbs)
+  for(uint i = 0; i<vbs.size(); ++i)
+    vbs[i].genotype(opt::max_coverage);
+}
+
+void print_variants(vector<VB> &vbs) {
+  for(uint i = 0; i<vbs.size(); ++i)
+    vbs[i].print();
 }
 
 int main(int argc, char *argv[]) {
@@ -198,15 +212,14 @@ int main(int argc, char *argv[]) {
   unordered_map<string, string> refs = extract_chrom_sequences(reference);
   kseq_destroy(reference);
   gzclose(fasta_in);
+  pelapsed("Reference processed");
 
   // STEP 1: add VCF kmers to bloom filter
-  pelapsed("VCF parsing (Bloom Filter construction)");
-  // BF bf(opt::bf_size);
-  // KMAP ref_bf;
-  // BF context_bf(opt::bf_size);
+  BF bf(opt::bf_size);
+  KMAP ref_bf;
+  BF context_bf(opt::bf_size);
 
   vector<string> used_seq_names;
-  // VB vb(opt::k, opt::error_rate);
   vector<VB> vbs (1, VB(opt::k, opt::error_rate));
 
   vcf_record->max_unpack = BCF_UN_INFO;
@@ -227,10 +240,9 @@ int main(int argc, char *argv[]) {
 
     VB *vb = &(vbs.back());
     if(!vb->empty() && (!vb->back().is_rknear_to(v, opt::k) || v.seq_name.compare(used_seq_names.back()) != 0)) {
-      // add_kmers_to_bf(bf, ref_bf, kmers);
-
       if(vbs.size() == 5000) { // we can process the blocks
-	analyze_blocks(vbs, refs);
+	build_signatures(vbs, refs);
+	fill_bfs(vbs, bf, ref_bf);
 	vbs.clear();
       }
 
@@ -242,170 +254,120 @@ int main(int argc, char *argv[]) {
     vbs.back().add_variant(v);
   }
   if(!vbs.empty()) {
-    analyze_blocks(vbs, refs);
+    build_signatures(vbs, refs);
+    fill_bfs(vbs, bf, ref_bf);
     vbs.clear();
+    vbs.push_back(VB(opt::k, opt::error_rate)); // for step 3
   }
-  //   if (vb.empty()) {
-  //     vb.add_variant(v);
-  //     continue;
-  //   }
-
-  //   if (!vb.is_near_to_last(v) || last_seq_name != v.seq_name) {
-  //     /***
-  //      * 1. extract k-mers
-  //      * 2. add k-mers to BF
-  //      * 3. clear block
-  //      * 4. set new reference
-  //      ***/
-  //     VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-  //     add_kmers_to_bf(bf, ref_bf, kmers);
-  //     vb.clear();
-  //     if(last_seq_name != v.seq_name) {
-  //       last_seq_name = v.seq_name;
-  //       used_seq_names.push_back(last_seq_name);
-  //     }
-  //   }
-  //   vb.add_variant(v);
-  // }
-  // if (!vb.empty()) {
-  //   /***
-  //    * 1. extract k-mers
-  //    * 2. add k-mers to BF
-  //    * 3. clear block
-  //    ***/
-  //   VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-  //   add_kmers_to_bf(bf, ref_bf, kmers);
-  //   vb.clear();
 
   bcf_hdr_destroy(vcf_header);
   bcf_destroy(vcf_record);
   bcf_close(vcf);
 
-  // bf.switch_mode();
+  bf.switch_mode();
 
-  // pelapsed("BF creation complete");
+  pelapsed("BF creation complete");
 
-  // pelapsed("Reference BF construction");
-  // for(const auto &seq_name : used_seq_names) {
-  //   string reference = refs[seq_name];
-  //   string ref_ksub(reference, (opt::ref_k - opt::k) / 2, opt::k);
-  //   string context(reference, 0, opt::ref_k);
-  //   transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
-  //   transform(context.begin(), context.end(), context.begin(), ::toupper);
-  //   if (bf.test_key(ref_ksub.c_str()))
-  //     context_bf.add_key(context.c_str());
-  //   for (uint p = opt::ref_k; p < reference.size(); ++p) {
-  //     char c1 = toupper(reference[p]);
-  //     context.erase(0, 1);
-  //     context += c1;
-  //     char c2 = toupper(reference[p - (opt::ref_k - opt::k) / 2]);
-  //     ref_ksub.erase(0, 1);
-  //     ref_ksub += c2;
-  //     if (bf.test_key(ref_ksub.c_str()))
-  //       context_bf.add_key(context.c_str());
-  //   }
-  // }
-  // pelapsed("Reference BF creation complete");
+  for(const auto &seq_name : used_seq_names) {
+    string reference = refs[seq_name];
+    string ref_ksub(reference, (opt::ref_k - opt::k) / 2, opt::k);
+    string context(reference, 0, opt::ref_k);
+    transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
+    transform(context.begin(), context.end(), context.begin(), ::toupper);
+    if (bf.test_key(ref_ksub.c_str()))
+      context_bf.add_key(context.c_str());
+    for (uint p = opt::ref_k; p < reference.size(); ++p) {
+      char c1 = toupper(reference[p]);
+      context.erase(0, 1);
+      context += c1;
+      char c2 = toupper(reference[p - (opt::ref_k - opt::k) / 2]);
+      ref_ksub.erase(0, 1);
+      ref_ksub += c2;
+      if (bf.test_key(ref_ksub.c_str()))
+        context_bf.add_key(context.c_str());
+    }
+  }
+  pelapsed("Reference BF creation complete");
 
-  // context_bf.switch_mode();
+  context_bf.switch_mode();
 
-  // // STEP 2: test variants present in read sample
-  // pelapsed("KMC output processing");
-  // uint32 klen, mode, min_counter, pref_len, sign_len, min_c, counter;
-  // uint64 tot_kmers, max_c;
-  // kmer_db.Info(klen, mode, min_counter, pref_len, sign_len, min_c, max_c, tot_kmers);
-  // CKmerAPI kmer_obj(klen);
+  // STEP 2: test variants present in read sample
+  uint32 klen, mode, min_counter, pref_len, sign_len, min_c, counter;
+  uint64 tot_kmers, max_c;
+  kmer_db.Info(klen, mode, min_counter, pref_len, sign_len, min_c, max_c, tot_kmers);
+  CKmerAPI kmer_obj(klen);
 
-  // char context[opt::ref_k + 1];
-  // while (kmer_db.ReadNextKmer(kmer_obj, counter)) {
-  //   kmer_obj.to_string(context);
-  //   transform(context, context + opt::ref_k, context, ::toupper);
-  //   char kmer[opt::k + 1];
-  //   strncpy(kmer, context + ((opt::ref_k - opt::k) / 2), opt::k);
-  //   kmer[opt::k] = '\0';
-  //   ref_bf.increment(kmer, counter);
-  //   if (!context_bf.test_key(context)) {
-  //     bf.increment(kmer, counter);
-  //   }
-  // }
+  char context[opt::ref_k + 1];
+  while (kmer_db.ReadNextKmer(kmer_obj, counter)) {
+    kmer_obj.to_string(context);
+    transform(context, context + opt::ref_k, context, ::toupper);
+    char kmer[opt::k + 1];
+    strncpy(kmer, context + ((opt::ref_k - opt::k) / 2), opt::k);
+    kmer[opt::k] = '\0';
+    ref_bf.increment(kmer, counter);
+    if (!context_bf.test_key(context)) {
+      bf.increment(kmer, counter);
+    }
+  }
+  pelapsed("BF weights created");
 
-  // pelapsed("BF weights created");
+  // STEP 3: check if variants in vcf are covered enough
+  vcf = bcf_open(opt::vcf_path.c_str(), "r");
+  vcf_header = bcf_hdr_read(vcf);
+  int set_samples_code = bcf_hdr_set_samples(vcf_header, NULL, 0);
+  print_cleaned_header(vcf_header);
+  bcf_hdr_destroy(vcf_header);
+  bcf_close(vcf);
 
-  // // STEP 3: check if variants in vcf are covered enough
-  // vcf = bcf_open(opt::vcf_path.c_str(), "r");
-  // vcf_header = bcf_hdr_read(vcf);
-  // set_samples_code = bcf_hdr_set_samples(vcf_header, NULL, 0);
-  // print_cleaned_header(vcf_header);
-  // bcf_hdr_destroy(vcf_header);
-  // bcf_close(vcf);
-
-  // vcf = bcf_open(opt::vcf_path.c_str(), "r");
-  // vcf_header = bcf_hdr_read(vcf);
+  vcf = bcf_open(opt::vcf_path.c_str(), "r");
+  vcf_header = bcf_hdr_read(vcf);
   // set_samples_code = bcf_hdr_set_samples(vcf_header, opt::samples.c_str(), is_file_flag);
-  // vcf_record = bcf_init();
+  vcf_record = bcf_init();
 
-  // pelapsed("VCF parsing and genotyping");
-  // i = 0;
-  // last_seq_name = "";
-  // while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
-  //   bcf_unpack(vcf_record, BCF_UN_STR);
-  //   Variant v(vcf_header, vcf_record, opt::freq_key);
-  //   ++i;
-  //   if(i%5000 == 0) {
-  //     string log_line = "Processed " + to_string(i) + " variants";
-  //     pelapsed(log_line, true);
-  //   }
-  //   // In the first iteration, we set last_seq_name
-  //   if(last_seq_name.size() == 0)
-  //     last_seq_name = v.seq_name;
+  string last_seq_name = "";
+  vcf_record->max_unpack = BCF_UN_INFO;
+  while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
+    bcf_unpack(vcf_record, BCF_UN_INFO); // Here we unpack till INFO field (no FORMAT and SAMPLES)
+    Variant v(vcf, vcf_header, vcf_record, opt::freq_key);
 
-  //   // In this step, we must consider the variants not present in the
-  //   // samples: their genotype is 0/0
-  //   if (!v.has_alts)
-  //     continue;
+    // We do not consider variants with <CN>
+    if (!v.has_alts)
+      continue;
 
-  //   if (vb.empty()) {
-  //     vb.add_variant(v);
-  //     continue;
-  //   }
+    // We store the contig name (we assume VCF to be ordered, i.e.,
+    // contigs are not mixed up)
+    if(used_seq_names.empty() || v.seq_name.compare(used_seq_names.back()) != 0)
+      last_seq_name = v.seq_name;
 
-  //   if (!vb.is_near_to_last(v) || last_seq_name != v.seq_name) {
-  //     /***
-  //      * 1. extract k-mers
-  //      * 2. check if variants are covered
-  //      * 3. output covered variants
-  //      * 4. clear block
-  //      * 5. set new reference
-  //      ***/
-  //     VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-  //     set_coverages(bf, ref_bf, vb, kmers);
-  //     vb.genotype(opt::max_coverage);
-  //     vb.output_variants(opt::verbose);
-  //     vb.clear();
-  //     if(last_seq_name != v.seq_name)
-  //       last_seq_name = v.seq_name;
-  //   }
-  //   vb.add_variant(v);
-  // }
-  // if (!vb.empty()) {
-  //   /***
-  //    * 1. extract k-mers
-  //    * 2. check if variants are covered
-  //    * 3. output covered variants
-  //    * 4. clear block
-  //    ***/
-  //   VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
-  //   set_coverages(bf, ref_bf, vb, kmers);
-  //   vb.genotype(opt::max_coverage);
-  //   vb.output_variants(opt::verbose);
-  //   vb.clear();
-  // }
-  // log_line = "Processed " + to_string(i) + " variants";
-  // pelapsed(log_line);
+    VB *vb = &(vbs.back());
+    if(!vb->empty() && (!vb->back().is_rknear_to(v, opt::k) || v.seq_name.compare(last_seq_name) != 0)) {
+      if(vbs.size() == 5000) { // we can process the blocks
+	build_signatures(vbs, refs);
+	set_coverages(vbs, bf, ref_bf);
+	compute_genotypes(vbs);
+	print_variants(vbs);
+	vbs.clear();
+      }
 
-  // bcf_hdr_destroy(vcf_header);
-  // bcf_destroy(vcf_record);
-  // bcf_close(vcf);
+      vbs.push_back(VB(opt::k, opt::error_rate));
+      if(v.seq_name.compare(last_seq_name) != 0)
+	last_seq_name = v.seq_name;
+    }
+    // Here we cannot use pointer vb since we could have add a new vb to the vector
+    vbs.back().add_variant(v);
+  }
+  if(!vbs.empty()) {
+    build_signatures(vbs, refs);
+    set_coverages(vbs, bf, ref_bf);
+    compute_genotypes(vbs);
+    print_variants(vbs);
+    vbs.clear();
+  }
+
+
+  bcf_hdr_destroy(vcf_header);
+  bcf_destroy(vcf_record);
+  bcf_close(vcf);
 
   cout.flush();
 
