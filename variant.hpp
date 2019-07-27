@@ -239,7 +239,7 @@ struct Variant {
       char *gt_ptr;
       char *gtc = strtok_r(samples,":\t", &gt_ptr);
       GT gt = extract_genotype(gtc);
-      genotypes[i] = gt;
+      genotypes[i++] = gt;
       if(next_tab == NULL) break;
       samples = next_tab+1;
     }

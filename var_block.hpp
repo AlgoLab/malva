@@ -24,9 +24,6 @@
 
 #include "variant.hpp"
 
-// Maybe these maps can be translated into vectors
-typedef map<int, map<int, vector<vector<string>>>> VK_GROUP;
-
 /**
  * Extend a container with another
  **/
@@ -102,7 +99,7 @@ public:
 	  GT gt(0, 0, false, 1);
 	  v->set_genotype(gt);
 	  continue_flag = true;
-	  continue;
+	  break;
 	}
       }
       if(continue_flag)
@@ -518,8 +515,8 @@ private: // methods
     // A set to avoid duplicate elements
     set<vector<string>> all_combs;
     Variant *central_v = &variants[central_index];
-    // For each individual having this variant
-    for (int gt_i = 0; gt_i<(int)central_v->genotypes.size(); ++gt_i) {
+    // For each individual
+    for(int gt_i = 0; gt_i<(int)central_v->genotypes.size(); ++gt_i) {
       bool phased_combination = true;
       vector<string> hap1;
       vector<string> hap2;
