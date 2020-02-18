@@ -26,6 +26,7 @@ Arguments:
      -c              maximum coverage for variant alleles (default:'"${DEFAULT_MAX_COV}"')
      -b              bloom filter size in GB (default:'"${DEFAULT_BF_SIZE}"')
      -m              max amount of RAM in GB - KMC parameter (default:'"${DEFAULT_MAX_MEM}"')
+     -p              strip \"chr\" from sequence names (dafault:false)
 
 Positional arguments:
      <reference>     reference file in FASTA format
@@ -44,8 +45,9 @@ samples=${DEFAULT_SAMPLES}
 maxcov=${DEFAULT_MAX_COV}
 bfsize=${DEFAULT_BF_SIZE}
 maxmem=${DEFAULT_MAX_MEM}
+strip_chr=""
 
-while getopts "k:r:e:f:s:c:b:m:h" flag; do
+while getopts "k:r:e:f:s:c:b:m:hp" flag; do
     case "${flag}" in
 	h) $(>&2 echo "${USAGE}")
 	   exit 0
@@ -66,6 +68,8 @@ while getopts "k:r:e:f:s:c:b:m:h" flag; do
 	   ;;
 	m) maxmem=${OPTARG}
 	   ;;
+  p) strip_chr="-p"
+     ;;
     esac
 done
 
@@ -94,7 +98,7 @@ else
 fi
 
 (>&2 echo "[${SCRIPT_NAME}] Running ${BIN_NAME}")
-${EXECUTABLE} -k ${k} -r ${refk} -e ${erate} -f ${freq} -s ${samples} -c ${maxcov} -b ${bfsize}  ${reference} ${vcf_file} ${kmc_out_prefix}
+${EXECUTABLE} ${strip_chr} -k ${k} -r ${refk} -e ${erate} -f ${freq} -s ${samples} -c ${maxcov} -b ${bfsize}  ${reference} ${vcf_file} ${kmc_out_prefix}
 
 (>&2 echo "[${SCRIPT_NAME}] Cleaning up")
 rm -rf ${kmc_tmp_dir}

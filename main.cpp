@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
   int l;
   while ((l = kseq_read(reference)) >= 0) {
     std::string id = reference->name.s;
-    if(id.compare(0,3,"chr") == 0) {
+    if(id.compare(0,3,"chr") == 0 && opt::strip_chr) {
       id = id.substr(3);
     }
     std::string seq (reference->seq.s);
