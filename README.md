@@ -69,6 +69,7 @@ Arguments:
     -f, --freq-key                    a priori frequency key in the INFO column of the input VCF (default:AF)
     -c, --max-coverage                maximum coverage for variant alleles (default:200)
     -b, --bf-size                     bloom filter size in GB (default:4)
+    -p, --strip-chr                   strip "chr" from sequence names (default:false)
 
 Positional arguments:
     <reference>                       reference file in FASTA format (may be gzipped)
@@ -96,6 +97,7 @@ Arguments:
      -c              maximum coverage for variant alleles (default:200)
      -b              bloom filter size in GB (default:4)
      -m              max amount of RAM in GB - KMC parameter (default:4)
+     -p              strip "chr" from sequence names (dafault:false)
 
 Positional arguments:
     <reference>     reference file in FASTA format (can be gzipped)
