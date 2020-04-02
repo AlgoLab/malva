@@ -27,6 +27,7 @@ Arguments:
      -b              bloom filter size in GB (default:'"${DEFAULT_BF_SIZE}"')
      -m              max amount of RAM in GB - KMC parameter (default:'"${DEFAULT_MAX_MEM}"')
      -p              strip \"chr\" from sequence names (dafault:false)
+     -u              use uniform a priori probabilities (default:false)
 
 Positional arguments:
      <reference>     reference file in FASTA format
@@ -46,8 +47,9 @@ maxcov=${DEFAULT_MAX_COV}
 bfsize=${DEFAULT_BF_SIZE}
 maxmem=${DEFAULT_MAX_MEM}
 strip_chr=""
+uniform=""
 
-while getopts "k:r:e:f:s:c:b:m:hp" flag; do
+while getopts "k:r:e:f:s:c:b:m:hpu" flag; do
     case "${flag}" in
 	h) $(>&2 echo "${USAGE}")
 	   exit 0
@@ -68,8 +70,10 @@ while getopts "k:r:e:f:s:c:b:m:hp" flag; do
 	   ;;
 	m) maxmem=${OPTARG}
 	   ;;
-  p) strip_chr="-p"
-     ;;
+	p) strip_chr="-p"
+	   ;;
+	u) uniform="-u"
+	   ;;
     esac
 done
 
@@ -98,7 +102,7 @@ else
 fi
 
 (>&2 echo "[${SCRIPT_NAME}] Running ${BIN_NAME}")
-${EXECUTABLE} ${strip_chr} -k ${k} -r ${refk} -e ${erate} -f ${freq} -s ${samples} -c ${maxcov} -b ${bfsize}  ${reference} ${vcf_file} ${kmc_out_prefix}
+${EXECUTABLE} ${strip_chr} ${uniform} -k ${k} -r ${refk} -e ${erate} -f ${freq} -s ${samples} -c ${maxcov} -b ${bfsize}  ${reference} ${vcf_file} ${kmc_out_prefix}
 
 (>&2 echo "[${SCRIPT_NAME}] Cleaning up")
 rm -rf ${kmc_tmp_dir}

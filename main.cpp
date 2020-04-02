@@ -191,7 +191,7 @@ int main(int argc, char *argv[]) {
   int i = 0;
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
     bcf_unpack(vcf_record, BCF_UN_STR);
-    Variant v(vcf_header, vcf_record, opt::freq_key);
+    Variant v(vcf_header, vcf_record, opt::freq_key, opt::uniform);
     ++i;
     if(i%5000 == 0) {
       std::string log_line = "Processed " + std::to_string(i) + " variants";
@@ -316,7 +316,7 @@ int main(int argc, char *argv[]) {
   last_seq_name = "";
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
     bcf_unpack(vcf_record, BCF_UN_STR);
-    Variant v(vcf_header, vcf_record, opt::freq_key);
+    Variant v(vcf_header, vcf_record, opt::freq_key, opt::uniform);
     ++i;
     if(i%5000 == 0) {
       std::string log_line = "Processed " + std::to_string(i) + " variants";

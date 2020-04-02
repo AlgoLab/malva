@@ -41,6 +41,7 @@ static const char *USAGE_MESSAGE =
   "      -c, --max-coverage                maximum coverage for variant alleles (default:200)\n"
   "      -b, --bf-size                     bloom filter size in GB (default:4)\n"
   "      -p, --strip-chr                   strip \"chr\" from sequence names (default:false)\n"
+  "      -u, --uniform                     use uniform a priori probabilities (default:false)\n"
   // "      -v, --verbose                     output a detailed VCF (more information in the INFO column)\n"
   // "      -t, --threads                     number of threads (default: 1)\n"
   "\n";
@@ -54,6 +55,7 @@ static std::string freq_key = "AF";
 static uint max_coverage = 200;
 static uint64_t bf_size = ((uint64_t)0b1 << 35);
 static bool strip_chr = false;
+static bool uniform = false;
 static bool verbose = false;
 // static size_t nThreads = 1;
 static std::string fasta_path;
@@ -61,7 +63,7 @@ static std::string vcf_path;
 static std::string kmc_sample_path;
 }
 
-static const char *shortopts = "k:r:e:s:f:c:b:hp";
+static const char *shortopts = "k:r:e:s:f:c:b:hpu";
 
 static const struct option longopts[] = {
     {"kmer-size", required_argument, NULL, 'k'},
@@ -72,6 +74,7 @@ static const struct option longopts[] = {
     {"max-coverage", required_argument, NULL, 'c'},
     {"bf-size", required_argument, NULL, 'b'},
     {"strip-chr", required_argument, NULL, 'p'},
+    {"uniform", required_argument, NULL, 'u'},
     // {"verbose", no_argument, NULL, 'v'},
     // {"threads", no_argument, NULL, 't'},
     {"help", no_argument, NULL, 'h'},
@@ -85,6 +88,9 @@ void parse_arguments(int argc, char **argv) {
     switch (c) {
     case 'p':
       opt::strip_chr = true;
+      break;
+    case 'u':
+      opt::uniform = true;
       break;
     case 'k':
       arg >> opt::k;

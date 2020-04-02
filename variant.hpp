@@ -50,7 +50,7 @@ struct Variant {
 
   Variant() {}
 
-  Variant(bcf_hdr_t *vcf_header, bcf1_t *vcf_record, const std::string &freq_key) {
+  Variant(bcf_hdr_t *vcf_header, bcf1_t *vcf_record, const std::string &freq_key, const bool uniform) {
     seq_name = bcf_hdr_id2name(vcf_header, vcf_record->rid);
     ref_pos = vcf_record->pos;
     idx = vcf_record->d.id;
@@ -74,7 +74,7 @@ struct Variant {
     set_sizes();
     if (has_alts) {
       // Populate frequencies vector
-      extract_frequencies(vcf_header, vcf_record, freq_key);
+      extract_frequencies(vcf_header, vcf_record, freq_key, uniform);
       if (is_present)
         // Populate genotypes and phasing
         extract_genotypes(vcf_header, vcf_record);
@@ -100,19 +100,25 @@ struct Variant {
   }
 
   void extract_frequencies(bcf_hdr_t *vcf_header, bcf1_t *vcf_record,
-                           const std::string &freq_key) {
+                           const std::string &freq_key, const bool uniform) {
     int ndst = 0;
     float *altall_freqs = NULL;
     bcf_get_info_float(vcf_header, vcf_record, freq_key.c_str(),
                        &altall_freqs, &ndst);
 
-    frequencies.push_back(0); // First element is reserved for reference allele
-    for (uint i = 0; i < alts.size(); ++i) {
-      float *freq = altall_freqs + i;
-      frequencies.push_back(freq[0]);
+    if(!uniform) {
+      frequencies.push_back(0); // First element is reserved for reference allele
+      for (uint i = 0; i < alts.size(); ++i) {
+	float *freq = altall_freqs + i;
+	frequencies.push_back(freq[0]);
+      }
+      // Here we compute the frequency of the reference allele
+      frequencies[0] = 1.0 - std::accumulate(frequencies.begin(), frequencies.end(), 0.0);
+    } else {
+      float uniform_freq = 1.0/(alts.size()+1);
+      for (uint i = 0; i<alts.size()+1; ++i)
+	frequencies.push_back(uniform_freq);
     }
-    // Here we compute the frequency of the reference allele
-    frequencies[0] = 1.0 - std::accumulate(frequencies.begin(), frequencies.end(), 0.0);
 
     if (frequencies[0] == 1.0)
       is_present = false;
