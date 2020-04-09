@@ -43,6 +43,7 @@ static const char *USAGE_MESSAGE =
   "      -p, --strip-chr                   strip \"chr\" from sequence names (default:false)\n"
   "      -u, --uniform                     use uniform a priori probabilities (default:false)\n"
   "      -v, --verbose                     output COVS and GTS in INFO column (default: false)\n"
+  "      -1, --haploid                     run MALVA in haploid mode (default: false)\n"
   // "      -t, --threads                     number of threads (default: 1)\n"
   "\n";
 
@@ -57,13 +58,14 @@ static uint64_t bf_size = ((uint64_t)0b1 << 35);
 static bool strip_chr = false;
 static bool uniform = false;
 static bool verbose = false;
+static bool haploid = false;
 // static size_t nThreads = 1;
 static std::string fasta_path;
 static std::string vcf_path;
 static std::string kmc_sample_path;
 }
 
-static const char *shortopts = "k:r:e:s:f:c:b:hpuv";
+static const char *shortopts = "k:r:e:s:f:c:b:hpuv1";
 
 static const struct option longopts[] = {
     {"kmer-size", required_argument, NULL, 'k'},
@@ -76,6 +78,7 @@ static const struct option longopts[] = {
     {"strip-chr", required_argument, NULL, 'p'},
     {"uniform", required_argument, NULL, 'u'},
     {"verbose", no_argument, NULL, 'v'},
+    {"haplod", no_argument, NULL, '1'},
     // {"threads", no_argument, NULL, 't'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}};
@@ -117,6 +120,9 @@ void parse_arguments(int argc, char **argv) {
       break;
     case 'v':
       opt::verbose = true;
+      break;
+    case '1':
+      opt::haploid = true;
       break;
     // case 't':
     //   arg >> opt::nThreads;

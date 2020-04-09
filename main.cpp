@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
        * 3. clear block
        * 4. set new reference
        ***/
-      VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
+      VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name], opt::haploid);
       add_kmers_to_bf(bf, ref_bf, kmers);
       vb.clear();
       if(last_seq_name != v.seq_name) {
@@ -244,7 +244,7 @@ int main(int argc, char *argv[]) {
      * 2. add k-mers to BF
      * 3. clear block
      ***/
-    VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
+    VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name], opt::haploid);
     add_kmers_to_bf(bf, ref_bf, kmers);
     vb.clear();
   }
@@ -351,10 +351,10 @@ int main(int argc, char *argv[]) {
        * 4. clear block
        * 5. set new reference
        ***/
-      VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
+      VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name], opt::haploid);
       set_coverages(bf, ref_bf, vb, kmers);
-      vb.genotype(opt::max_coverage);
-      vb.output_variants(opt::verbose);
+      vb.genotype(opt::max_coverage, opt::haploid);
+      vb.output_variants(opt::haploid, opt::verbose);
       vb.clear();
       if(last_seq_name != v.seq_name)
         last_seq_name = v.seq_name;
@@ -368,10 +368,10 @@ int main(int argc, char *argv[]) {
      * 3. output covered variants
      * 4. clear block
      ***/
-    VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name]);
+    VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name], opt::haploid);
     set_coverages(bf, ref_bf, vb, kmers);
-    vb.genotype(opt::max_coverage);
-    vb.output_variants(opt::verbose);
+    vb.genotype(opt::max_coverage, opt::haploid);
+    vb.output_variants(opt::haploid, opt::verbose);
     vb.clear();
   }
   log_line = "Processed " + std::to_string(i) + " variants";

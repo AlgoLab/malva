@@ -160,6 +160,10 @@ struct Variant {
       }
       if(all_1 < 0) all_1 = 0;
       if(all_2 < 0) all_2 = 0;
+
+      // FIXME: we store two alleles per sample even when we have an
+      // haploid VCF. We manage haploid VCF in a special way in
+      // var_block.hpp
       genotypes.push_back(std::make_pair(all_1, all_2));
       phasing.push_back(is_phased);
     }

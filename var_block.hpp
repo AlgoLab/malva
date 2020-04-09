@@ -67,7 +67,7 @@ public:
 
   void clear() { variants.clear(); }
 
-  VK_GROUP extract_kmers(const std::string &reference) {
+  VK_GROUP extract_kmers(const std::string &reference, const bool haploid) {
     VK_GROUP kmers;
     for (uint v_index = 0; v_index < variants.size(); ++v_index) {
       std::map<int, std::vector<std::vector<std::string>>> _kmers;
@@ -89,7 +89,7 @@ public:
       for (const std::vector<int> &comb : combs) {
         std::vector<std::string> ref_subs = get_ref_subs(comb, reference);
         std::set<std::vector<std::string>> alt_allele_combs =
-          build_alleles_combs(comb, v_index);
+          build_alleles_combs(comb, v_index, haploid);
 
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // !!! the body of this for could be split in more methods !!!
@@ -180,15 +180,19 @@ public:
   /**
    * Method to compute and store the genotype of each variant of the block.
    **/
-  void genotype(const int &max_cov) {
+  void genotype(const int &max_cov, const bool haploid) {
+    std::string best_geno = "0/0";
+    if(haploid)
+      best_geno = "0";
+
     for (uint i = 0; i < variants.size(); ++i) {
       Variant *v = &variants[i];
 
-      // If some allele is too covered, assign 0/0 and continue
+      // If some allele is too covered, assign best_geno (ie 0 or 0/0) and continue
       bool continue_flag = false;
       for(const int &cov : v->coverages) {
         if(cov > max_cov) {
-          GT gt = std::make_pair("0/0", 1);
+          GT gt = std::make_pair(best_geno, 1);
           v->add_genotype(gt);
           continue_flag = true;
           continue;
@@ -200,41 +204,58 @@ public:
       // The variant wasn't present in any sample: we have only the
       // coverage of the reference allele
       if (v->coverages.size() == 1) {
-        GT gt = std::make_pair("0/0", 1);
+        GT gt = std::make_pair(best_geno, 1);
         v->add_genotype(gt);
         continue;
       }
 
       ldouble max_prob = 0.0;
-      std::string best_geno = "0/0";
-      for (uint g1 = 0; g1 < v->coverages.size(); ++g1) {
-        for (uint g2 = g1; g2 < v->coverages.size(); ++g2) {
-          ldouble prior;
-          ldouble posterior;
-          ldouble total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
-          if (g1 == g2) {
-            prior = std::pow(v->frequencies[g1], 2);
-            ldouble truth = v->coverages[g1];
-            ldouble error = total_sum - truth;
-            posterior = binomial(truth + error, truth) *
-              pow(1 - error_rate, truth) * pow(error_rate/(v->coverages.size() - 1), error);
-          } else {
-            prior = 2 * v->frequencies[g1] * v->frequencies[g2];
-            ldouble truth1 = v->coverages[g1];
-            ldouble truth2 = v->coverages[g2];
-            ldouble error = total_sum - truth1 - truth2;
-            posterior = binomial(truth1 + truth2 + error, truth1 + truth2) *
-              binomial(truth1 + truth2, truth1) *
-              pow((1 - error_rate) / 2, truth1) *
-              pow((1 - error_rate) / 2, truth2) * pow(error_rate/(v->coverages.size() - 2), error);
-          }
+      if(haploid) {
+	for (uint g1 = 0; g1 < v->coverages.size(); ++g1) {
+	  ldouble total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
+	  ldouble prior = std::pow(v->frequencies[g1], 2);
+	  ldouble truth = v->coverages[g1];
+	  ldouble error = total_sum - truth;
+	  ldouble posterior = binomial(truth + error, truth) *
+	    pow(1 - error_rate, truth) * pow(error_rate/(v->coverages.size() - 1), error);
 
-          ldouble prob = prior * posterior;
-          if (prob > max_prob) {
-            max_prob = prob;
-            best_geno = std::to_string(g1) + "/" + std::to_string(g2);
-          }
-          v->add_genotype(std::make_pair(std::to_string(g1) + "/" + std::to_string(g2), prob));
+	  ldouble prob = prior * posterior;
+	  if (prob > max_prob) {
+	    max_prob = prob;
+	    best_geno = std::to_string(g1);
+	  }
+	  v->add_genotype(std::make_pair(std::to_string(g1), prob));
+	}
+      } else {
+	for (uint g1 = 0; g1 < v->coverages.size(); ++g1) {
+	  for (uint g2 = g1; g2 < v->coverages.size(); ++g2) {
+	    ldouble prior;
+	    ldouble posterior;
+	    ldouble total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
+	    if (g1 == g2) {
+	      prior = std::pow(v->frequencies[g1], 2);
+	      ldouble truth = v->coverages[g1];
+	      ldouble error = total_sum - truth;
+	      posterior = binomial(truth + error, truth) *
+		pow(1 - error_rate, truth) * pow(error_rate/(v->coverages.size() - 1), error);
+	    } else {
+	      prior = 2 * v->frequencies[g1] * v->frequencies[g2];
+	      ldouble truth1 = v->coverages[g1];
+	      ldouble truth2 = v->coverages[g2];
+	      ldouble error = total_sum - truth1 - truth2;
+	      posterior = binomial(truth1 + truth2 + error, truth1 + truth2) *
+		binomial(truth1 + truth2, truth1) *
+		pow((1 - error_rate) / 2, truth1) *
+		pow((1 - error_rate) / 2, truth2) * pow(error_rate/(v->coverages.size() - 2), error);
+	    }
+
+	    ldouble prob = prior * posterior;
+	    if (prob > max_prob) {
+	      max_prob = prob;
+	      best_geno = std::to_string(g1) + "/" + std::to_string(g2);
+	    }
+	    v->add_genotype(std::make_pair(std::to_string(g1) + "/" + std::to_string(g2), prob));
+	  }
         }
       }
     }
@@ -246,7 +267,7 @@ public:
    * (no definition in header). Also filter is set to "PASS" -
    * see variant.hpp !
    **/
-  void output_variants(const bool &verbose) {
+  void output_variants(const bool haploid, const bool verbose) {
     for (uint i = 0; i < variants.size(); ++i) {
       Variant *v = &variants[i];
       std::cout << v->seq_name << '\t' << v->ref_pos + 1 << '\t' << v->idx
@@ -267,7 +288,7 @@ public:
         info.pop_back();
       }
       // Adds gts to v->info
-      std::string best_geno = "0/0";
+      std::string best_geno = haploid ? "0" : "0/0";
       ldouble best_qual = 0;
       ldouble total_qual = 0.0;
       for(const auto gt : v->computed_gts) {
@@ -583,11 +604,11 @@ private: // methods
   /**
    * Builds and returns all the possible combination of alleles (haplotypes),
    * with respect to GTs.
-   * !!! For now, I'm assuming phased GT !!!
    **/
   std::set<std::vector<std::string>>
   build_alleles_combs(const std::vector<int> &comb,
-                                  const int &central_index) {
+		      const int &central_index,
+		      const bool haploid) {
     // A set to avoid duplicate elements
     std::set<std::vector<std::string>> aacs;
     Variant *central_v = &variants[central_index];
@@ -599,16 +620,21 @@ private: // methods
       for (const int &j : comb) {
 	phased_combination &= variants[j].phasing[gt_i];
         hap1.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].first));
-	hap2.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].second));
+	if(!haploid)
+	  hap2.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].second));
       }
 
-      if(phased_combination) {
+      if(haploid)
 	aacs.insert(hap1);
-	aacs.insert(hap2);
-      } else {
-	std::vector<std::vector<std::string>> all_haplotypes = combine_haplotypes(hap1, hap2);
-	for(const auto hap : all_haplotypes) {
-	  aacs.insert(hap);
+      else {
+	if(phased_combination) {
+	  aacs.insert(hap1);
+	  aacs.insert(hap2);
+	} else {
+	  std::vector<std::vector<std::string>> all_haplotypes = combine_haplotypes(hap1, hap2);
+	  for(const auto hap : all_haplotypes) {
+	    aacs.insert(hap);
+	  }
 	}
       }
     }
