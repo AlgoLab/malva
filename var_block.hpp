@@ -263,8 +263,7 @@ public:
 
   /**
    * Method to output the variants of the block in VCF format.
-   * ! Clean this method! In verbose mode, info field is hand-made
-   * (no definition in header). Also filter is set to "PASS" -
+   * ! Clean this method! Filter is set to "PASS" -
    * see variant.hpp !
    **/
   void output_variants(const bool haploid, const bool verbose) {
@@ -279,7 +278,11 @@ public:
         if (varc != v->alts.size())
           std::cout << ',';
       }
-      std::string quality = isnan(v->quality) ? "." : std::to_string(v->quality);
+      std::cout << "\t";
+      if(isnan(v->quality))
+	std::cout << ".";
+      else
+	std::cout << v->quality;
       std::string info = ".";
       if(verbose) {
         // Adds coverages to v->info (here I'm assuming v->info is '.')
@@ -311,7 +314,7 @@ public:
       }
       if(verbose)
         info.pop_back();
-      std::cout << "\t" << quality << "\t" << v->filter << "\t" << info
+      std::cout << "\t" << v->filter << "\t" << info
                 << "\tGT:GQ\t" << best_geno << ":"
                 << (int)round(best_qual * 100) << "\n";
     }
