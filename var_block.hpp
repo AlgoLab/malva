@@ -261,9 +261,9 @@ public:
       std::string info = ".";
       if(verbose) {
         // Adds coverages to v->info (here I'm assuming v->info is '.')
-        info = "COVS:";
+        info = "COVS=";
         for(const auto &cov : v->coverages)
-          info+=std::to_string(cov) + "-";
+          info+=std::to_string((int)cov) + ",";
         info.pop_back();
       }
       // Adds gts to v->info
@@ -276,7 +276,7 @@ public:
       std::string geno = "";
       ldouble qual = 0.0;
       if(verbose)
-        info += ";GTS:";
+        info += ";GTS=";
       for(const auto gt : v->computed_gts) {
         geno = gt.first;
         qual = gt.second / total_qual;
@@ -285,7 +285,7 @@ public:
           best_qual = qual;
         }
         if(verbose)
-          info += geno + "_" + std::to_string(qual) + "-";
+          info += geno + ":" + std::to_string(qual) + ",";
       }
       if(verbose)
         info.pop_back();

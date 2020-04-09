@@ -115,12 +115,19 @@ void set_coverages(BF &bf, KMAP &ref_bf, VB &vb, const VK_GROUP &kmers/*, const 
  * Method to clean and print VCF header. It adds GT and GQ FORMAT,
  * removes all samples, and adds donor sample.
  **/
-void print_cleaned_header(bcf_hdr_t *vcf_header) {
+void print_cleaned_header(bcf_hdr_t *vcf_header, const bool verbose) {
   // Adding format fields - if already present, they won't be added
   bcf_hdr_append(vcf_header, "##FORMAT=<ID=GT,Number=1,Type=String,"
                  "Description=\"Genotype\">");
   bcf_hdr_append(vcf_header, "##FORMAT=<ID=GQ,Number=1,Type=Integer,"
                  "Description=\"Genotype Quality\">");
+
+  if(verbose) {
+    bcf_hdr_append(vcf_header, "##INFO=<ID=COVS,Number=R,Type=Integer,"
+		   "Description=\"Allele coverages\">");
+    bcf_hdr_append(vcf_header, "##INFO=<ID=GTS,Number=.,Type=String,"
+		   "Description=\"Genotypes Likelihood\">");
+  }
 
   // Adding donor sample and removing all other samples
   const char *new_sample = "DONOR";
@@ -302,7 +309,7 @@ int main(int argc, char *argv[]) {
   vcf = bcf_open(opt::vcf_path.c_str(), "r");
   vcf_header = bcf_hdr_read(vcf);
   set_samples_code = bcf_hdr_set_samples(vcf_header, NULL, 0);
-  print_cleaned_header(vcf_header);
+  print_cleaned_header(vcf_header, opt::verbose);
   bcf_hdr_destroy(vcf_header);
   bcf_close(vcf);
 

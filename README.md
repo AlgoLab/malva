@@ -71,6 +71,7 @@ Arguments:
     -b, --bf-size                     bloom filter size in GB (default:4)
     -p, --strip-chr                   strip "chr" from sequence names (default:false)
     -u, --uniform                     use uniform a priori probabilities (default:false)
+    -v, --verbose                     output COVS and GTS in INFO column (default: false)
 
 Positional arguments:
     <reference>                       reference file in FASTA format (may be gzipped)
@@ -100,6 +101,7 @@ Arguments:
      -m              max amount of RAM in GB - KMC parameter (default:4)
      -p              strip "chr" from sequence names (dafault:false)
      -u              use uniform a priori probabilities (default:false)
+     -v              output COVS and GTS in INFO column (default: false)
 
 Positional arguments:
     <reference>     reference file in FASTA format (can be gzipped)

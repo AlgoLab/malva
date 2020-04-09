@@ -42,7 +42,7 @@ static const char *USAGE_MESSAGE =
   "      -b, --bf-size                     bloom filter size in GB (default:4)\n"
   "      -p, --strip-chr                   strip \"chr\" from sequence names (default:false)\n"
   "      -u, --uniform                     use uniform a priori probabilities (default:false)\n"
-  // "      -v, --verbose                     output a detailed VCF (more information in the INFO column)\n"
+  "      -v, --verbose                     output COVS and GTS in INFO column (default: false)\n"
   // "      -t, --threads                     number of threads (default: 1)\n"
   "\n";
 
@@ -63,7 +63,7 @@ static std::string vcf_path;
 static std::string kmc_sample_path;
 }
 
-static const char *shortopts = "k:r:e:s:f:c:b:hpu";
+static const char *shortopts = "k:r:e:s:f:c:b:hpuv";
 
 static const struct option longopts[] = {
     {"kmer-size", required_argument, NULL, 'k'},
@@ -75,7 +75,7 @@ static const struct option longopts[] = {
     {"bf-size", required_argument, NULL, 'b'},
     {"strip-chr", required_argument, NULL, 'p'},
     {"uniform", required_argument, NULL, 'u'},
-    // {"verbose", no_argument, NULL, 'v'},
+    {"verbose", no_argument, NULL, 'v'},
     // {"threads", no_argument, NULL, 't'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}};
@@ -115,9 +115,9 @@ void parse_arguments(int argc, char **argv) {
       arg >> opt::bf_size;
       opt::bf_size = opt::bf_size * ((uint64_t)0b1 << 33);
       break;
-    // case 'v':
-    //   opt::verbose = true;
-    //   break;
+    case 'v':
+      opt::verbose = true;
+      break;
     // case 't':
     //   arg >> opt::nThreads;
     //   break;
