@@ -279,6 +279,7 @@ public:
         if (varc != v->alts.size())
           std::cout << ',';
       }
+      std::string quality = isnan(v->quality) ? "." : std::to_string(v->quality);
       std::string info = ".";
       if(verbose) {
         // Adds coverages to v->info (here I'm assuming v->info is '.')
@@ -310,7 +311,7 @@ public:
       }
       if(verbose)
         info.pop_back();
-      std::cout << "\t" << v->quality << "\t" << v->filter << "\t" << info
+      std::cout << "\t" << quality << "\t" << v->filter << "\t" << info
                 << "\tGT:GQ\t" << best_geno << ":"
                 << (int)round(best_qual * 100) << "\n";
     }
