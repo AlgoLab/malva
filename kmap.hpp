@@ -78,7 +78,7 @@ struct KMAP {
     std::string ckmer = canonical(kmer);
     if(kmers.find(ckmer) != kmers.end()) {
       uint32 new_value = kmers[ckmer] + counter;
-      kmers[ckmer] = new_value < 250 ? new_value : 250;
+      kmers[ckmer] = new_value;
       ++_times[ckmer];
     }
   }

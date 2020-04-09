@@ -100,7 +100,7 @@ public:
   void switch_mode() {
     _mode = true;
     _brank = rank_support_v<1>(&_bf);
-    _counts = int_vector<8>(_brank(_size), 0, 8);
+    _counts = int_vector<16>(_brank(_size), 0, 16);
     _times = int_vector<8>(_brank(_size), 0, 8);
   }
 
@@ -112,7 +112,7 @@ public:
     if (_bf[bf_idx]) {
       size_t cnts_idx = _brank(bf_idx);
       uint32 new_value = _counts[cnts_idx] + counter;
-      _counts[cnts_idx] = new_value < 250 ? new_value : 250;
+      _counts[cnts_idx] = new_value;
       ++_times[cnts_idx];
     }
     return true;
@@ -151,7 +151,7 @@ private:
   size_t _size;
   bit_vector _bf;
   rank_support_v<1> _brank;
-  int_vector<8> _counts;
+  int_vector<16> _counts;
   int_vector<8> _times;
 };
 
