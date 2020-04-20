@@ -205,6 +205,16 @@ struct Variant {
     // maybe we can add some control here
     computed_gts.push_back(gt);
   }
+
+  void normalize_coverages(const int max_value) {
+    float min = *min_element(std::begin(coverages), std::end(coverages));
+    float max = *max_element(std::begin(coverages), std::end(coverages));
+    if(max <= max_value)
+      return;
+    // Normalize in range [a=0,b=max_value]:  (b-a) * (x-min)/(max-min) + a
+    for(float &cov : coverages)
+      cov = max_value * (cov - min)/(max - min);
+  }
 };
 
 #endif

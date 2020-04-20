@@ -209,6 +209,12 @@ public:
         continue;
       }
 
+      // We cannot compute the binomial of too big values. These are the upper bounds:
+      // float:         tgamma(35)   = 2.95233e+38
+      // double:        tgamma(171)  = 7.25742e+306
+      // long double:   tgamma(1755) = 1.97926e+4930
+      v->normalize_coverages(1754); // -1 since we do +1 to compute the binomial
+
       ldouble max_prob = 0.0;
       if(haploid) {
 	for (uint g1 = 0; g1 < v->coverages.size(); ++g1) {
