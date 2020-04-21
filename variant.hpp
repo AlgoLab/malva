@@ -45,7 +45,7 @@ struct Variant {
   bool has_alts = true;                       // false if no alternatives, i.e. only <CN>
   bool is_present = true;                     // false if no sample has this variant
   std::vector<float> frequencies;             // Allele frequency in the considered population
-  std::vector<float> coverages;               // Allele coverages (computed from input sample)
+  std::vector<uint> coverages;                // Allele coverages (computed from input sample)
   std::vector<GT> computed_gts;               // Computed genotypes
 
   Variant() {}
@@ -196,7 +196,7 @@ struct Variant {
     return -1;
   }
 
-  void set_coverage(const int &i, const float &cov) {
+  void set_coverage(const int i, const uint cov) {
     // maybe we can add some control here
     coverages[i] = cov;
   }
@@ -204,16 +204,6 @@ struct Variant {
   void add_genotype(const GT &gt) {
     // maybe we can add some control here
     computed_gts.push_back(gt);
-  }
-
-  void normalize_coverages(const int max_value) {
-    float min = *min_element(std::begin(coverages), std::end(coverages));
-    float max = *max_element(std::begin(coverages), std::end(coverages));
-    if(max <= max_value)
-      return;
-    // Normalize in range [a=0,b=max_value]:  (b-a) * (x-min)/(max-min) + a
-    for(float &cov : coverages)
-      cov = max_value * (cov - min)/(max - min);
   }
 };
 

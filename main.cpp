@@ -87,9 +87,9 @@ void set_coverages(BF &bf, KMAP &ref_bf, VB &vb, const VK_GROUP &kmers/*, const 
     // For each variant
     Variant v = vb.get_variant(var.first);
     for (const auto &p : var.second) {
-      float allele_cov = 0;
+      uint allele_cov = 0;
       for (const auto &Ks : p.second) {
-        float curr_cov = 0;
+        uint curr_cov = 0;
         int n = 0; // Number of kmers in the signature
         for (const auto &kmer : Ks) {
           int w = 0;

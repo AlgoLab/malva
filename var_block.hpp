@@ -27,8 +27,6 @@
 // Maybe these maps can be translated into vectors
 typedef std::map<int, std::map<int, std::vector<std::vector<std::string>>>> VK_GROUP;
 
-typedef long double ldouble;
-
 /**
  * Extend a container with another
  **/
@@ -209,53 +207,61 @@ public:
         continue;
       }
 
-      // We cannot compute the binomial of too big values. These are the upper bounds:
-      // float:         tgamma(35)   = 2.95233e+38
-      // double:        tgamma(171)  = 7.25742e+306
-      // long double:   tgamma(1755) = 1.97926e+4930
-      v->normalize_coverages(1754); // -1 since we do +1 to compute the binomial
-
-      ldouble max_prob = 0.0;
+      double max_prob = 0.0;
       if(haploid) {
 	for (uint g1 = 0; g1 < v->coverages.size(); ++g1) {
-	  ldouble total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
-	  ldouble prior = std::pow(v->frequencies[g1], 2);
-	  ldouble truth = v->coverages[g1];
-	  ldouble error = total_sum - truth;
-	  ldouble posterior = binomial(truth + error, truth) *
-	    pow(1 - error_rate, truth) * pow(error_rate/(v->coverages.size() - 1), error);
+	  uint total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
+	  uint truth = v->coverages[g1];
+	  uint error = total_sum - truth;
 
-	  ldouble prob = prior * posterior;
+	  double log_prior = 0;
+	  if(v->frequencies[g1] != 0)
+	    // otherwise, we'll get -inf
+	    log_prior = 2*log(v->frequencies[g1]);
+	  double log_posterior = log_binomial(truth + error, truth) +
+	    truth * log(1 - error_rate) +
+	    error * log(error_rate/(v->coverages.size() - 1));
+
+	  double log_prob = log_prior + log_posterior;
+	  double prob = exp(log_prob);
 	  if (prob > max_prob) {
 	    max_prob = prob;
 	    best_geno = std::to_string(g1);
 	  }
+
 	  v->add_genotype(std::make_pair(std::to_string(g1), prob));
 	}
       } else {
 	for (uint g1 = 0; g1 < v->coverages.size(); ++g1) {
 	  for (uint g2 = g1; g2 < v->coverages.size(); ++g2) {
-	    ldouble prior;
-	    ldouble posterior;
-	    ldouble total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
+	    double log_prior;
+	    double log_posterior;
+	    uint total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
 	    if (g1 == g2) {
-	      prior = std::pow(v->frequencies[g1], 2);
-	      ldouble truth = v->coverages[g1];
-	      ldouble error = total_sum - truth;
-	      posterior = binomial(truth + error, truth) *
-		pow(1 - error_rate, truth) * pow(error_rate/(v->coverages.size() - 1), error);
+	      log_prior = 2*log(v->frequencies[g1]);
+	      uint truth = v->coverages[g1];
+	      uint error = total_sum - truth;
+	      log_posterior = log_binomial(truth + error, truth) +
+		truth * log(1 - error_rate) +
+		error * log(error_rate/(v->coverages.size() - 1));
 	    } else {
-	      prior = 2 * v->frequencies[g1] * v->frequencies[g2];
-	      ldouble truth1 = v->coverages[g1];
-	      ldouble truth2 = v->coverages[g2];
-	      ldouble error = total_sum - truth1 - truth2;
-	      posterior = binomial(truth1 + truth2 + error, truth1 + truth2) *
-		binomial(truth1 + truth2, truth1) *
-		pow((1 - error_rate) / 2, truth1) *
-		pow((1 - error_rate) / 2, truth2) * pow(error_rate/(v->coverages.size() - 2), error);
+	      log_prior = log(2 * v->frequencies[g1] * v->frequencies[g2]);
+	      uint truth1 = v->coverages[g1];
+	      uint truth2 = v->coverages[g2];
+	      uint error = total_sum - truth1 - truth2;
+	      log_posterior = log_binomial(truth1 + truth2 + error, truth1 + truth2) +
+		log_binomial(truth1 + truth2, truth1) +
+		truth1 * log((1 - error_rate) / 2) +
+		truth2 * log((1 - error_rate) / 2);
+	      if(v->coverages.size() > 2)
+		// otherwise /0 -> nan
+		log_posterior += error * log(error_rate/(v->coverages.size() - 2));
 	    }
 
-	    ldouble prob = prior * posterior;
+	    double log_prob = log_prior + log_posterior;
+	    double prob = 0;
+	    if(!isinf(log_prob))
+	      prob = exp(log_prob);
 	    if (prob > max_prob) {
 	      max_prob = prob;
 	      best_geno = std::to_string(g1) + "/" + std::to_string(g2);
@@ -299,13 +305,13 @@ public:
       }
       // Adds gts to v->info
       std::string best_geno = haploid ? "0" : "0/0";
-      ldouble best_qual = 0;
-      ldouble total_qual = 0.0;
+      double best_qual = 0;
+      double total_qual = 0.0;
       for(const auto gt : v->computed_gts) {
         total_qual += gt.second;
       }
       std::string geno = "";
-      ldouble qual = 0.0;
+      double qual = 0.0;
       if(verbose)
         info += ";GTS=";
       for(const auto gt : v->computed_gts) {
@@ -652,11 +658,13 @@ private: // methods
   }
 
   /**
-   * Binomial coefficient is computed by using gamma function
+   * Log of the binomial coefficient computed using Stirling
+   * approximation (see https://en.wikipedia.org/wiki/Stirling's_approximation)
    **/
-  ldouble binomial(const double &x, const double &y) {
-    return tgammal(x + 1.0) /
-      (tgammal(y + 1.0) * tgammal(x - y + 1.0));
+  double log_binomial(const int &n, const int &k) {
+    if(n == 0 || n==k || k == 0)
+      return 0;
+    return n * log(n) - k * log(k) - (n-k) * log(n-k);
   }
 };
 
