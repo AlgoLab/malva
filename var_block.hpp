@@ -207,7 +207,6 @@ public:
         continue;
       }
 
-      double max_prob = 0.0;
       if(haploid) {
 	for (uint g1 = 0; g1 < v->coverages.size(); ++g1) {
 	  uint total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
@@ -224,10 +223,6 @@ public:
 
 	  double log_prob = log_prior + log_posterior;
 	  double prob = exp(log_prob);
-	  if (prob > max_prob) {
-	    max_prob = prob;
-	    best_geno = std::to_string(g1);
-	  }
 
 	  v->add_genotype(std::make_pair(std::to_string(g1), prob));
 	}
@@ -262,10 +257,6 @@ public:
 	    double prob = 0;
 	    if(!isinf(log_prob))
 	      prob = exp(log_prob);
-	    if (prob > max_prob) {
-	      max_prob = prob;
-	      best_geno = std::to_string(g1) + "/" + std::to_string(g2);
-	    }
 	    v->add_genotype(std::make_pair(std::to_string(g1) + "/" + std::to_string(g2), prob));
 	  }
         }
@@ -305,7 +296,7 @@ public:
       }
       // Adds gts to v->info
       std::string best_geno = haploid ? "0" : "0/0";
-      double best_qual = 0;
+      double best_qual = 0.0;
       double total_qual = 0.0;
       for(const auto gt : v->computed_gts) {
         total_qual += gt.second;

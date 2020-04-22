@@ -114,6 +114,8 @@ struct Variant {
       }
       // Here we compute the frequency of the reference allele
       frequencies[0] = 1.0 - std::accumulate(frequencies.begin(), frequencies.end(), 0.0);
+      if(frequencies[0] < 0) // this to avoid bad approximation
+	frequencies[0] = 0.0;
     } else {
       float uniform_freq = 1.0/(alts.size()+1);
       for (uint i = 0; i<alts.size()+1; ++i)
