@@ -1,5 +1,5 @@
-CXXFLAGS=-Wno-char-subscripts -DNDEBUG -Wall -O3 -std=c++11 -I. -I./sdsl-lite/build/include -I./htslib/htslib -I./KMC -fopenmp
-LIBS=-L./sdsl-lite/build/lib -L./sdsl-lite/build/external/libdivsufsort/lib -L./htslib/ -lhts -lz -lsdsl -ldivsufsort -ldivsufsort64
+CXXFLAGS=-Wno-char-subscripts -DNDEBUG -Wall -O3 -std=c++11 -I. -I./include -I./htslib/htslib -I./KMC -fopenmp
+LIBS=-L./lib -L./htslib/ -lhts -lz -lsdsl -ldivsufsort -ldivsufsort64
 
 .PHONY: all
 

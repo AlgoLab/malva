@@ -40,7 +40,9 @@ cd malva
 If you have KMC3, sdsl-lite, and htslib already installed you can skip the following commands.
 
 ```bash
-cd sdsl-lite/build
+cd sdsl-lite
+./install.sh ..
+cd ..
 ./build.sh
 cd ../../KMC
 make

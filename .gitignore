@@ -49,3 +49,5 @@ auto/
 *.bbl
 *.blg
 example
+include
+lib
