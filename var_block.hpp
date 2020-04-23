@@ -215,17 +215,15 @@ public:
 	  uint truth = v->coverages[g1];
 	  uint error = total_sum - truth;
 
-	  double log_prior = 0;
-	  if(v->frequencies[g1] != 0)
-	    // otherwise, we'll get -inf
-	    log_prior = 2*log(v->frequencies[g1]);
+	  double log_prior = 2*log(v->frequencies[g1]);
 	  double log_posterior = log_binomial(truth + error, truth) +
 	    truth * log(1 - error_rate) +
 	    error * log(error_rate/(v->coverages.size() - 1));
 
 	  double log_prob = log_prior + log_posterior;
-	  double prob = exp(log_prob);
-
+	  double prob = 0;
+	  if(!isinf(log_prob))
+	    prob = exp(log_prob);
 	  v->add_genotype(make_pair(to_string(g1), prob));
 	}
       } else {
