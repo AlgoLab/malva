@@ -26,6 +26,8 @@
 
 #include <getopt.h>
 
+using namespace std;
+
 static const char *USAGE_MESSAGE =
   "Usage: malva-geno [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] "
   "<reference.fa> <variants.vcf> <kmc_output_prefix>\n"
@@ -51,8 +53,8 @@ namespace opt {
 static uint k = 35;
 static uint ref_k = 43;
 static float error_rate = 0.001;
-static std::string samples = "-";
-static std::string freq_key = "AF";
+static string samples = "-";
+static string freq_key = "AF";
 static uint max_coverage = 200;
 static uint64_t bf_size = ((uint64_t)0b1 << 35);
 static bool strip_chr = false;
@@ -60,9 +62,9 @@ static bool uniform = false;
 static bool verbose = false;
 static bool haploid = false;
 // static size_t nThreads = 1;
-static std::string fasta_path;
-static std::string vcf_path;
-static std::string kmc_sample_path;
+static string fasta_path;
+static string vcf_path;
+static string kmc_sample_path;
 }
 
 static const char *shortopts = "k:r:e:s:f:c:b:hpuv1";
@@ -87,7 +89,7 @@ void parse_arguments(int argc, char **argv) {
   bool die = false;
   for (char c;
        (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) {
-    std::istringstream arg(optarg != NULL ? optarg : "");
+    istringstream arg(optarg != NULL ? optarg : "");
     switch (c) {
     case 'p':
       opt::strip_chr = true;
@@ -131,20 +133,20 @@ void parse_arguments(int argc, char **argv) {
       die = true;
       break;
     case 'h':
-      std::cout << USAGE_MESSAGE;
+      cout << USAGE_MESSAGE;
       exit(EXIT_SUCCESS);
     }
   }
 
   if (argc - optind < 3) {
-    std::cerr << "malva : missing arguments\n";
+    cerr << "malva : missing arguments\n";
     die = true;
   } else if (argc - optind > 3) {
-    std::cerr << "malva : too many arguments\n";
+    cerr << "malva : too many arguments\n";
     die = true;
   }
   if (die) {
-    std::cerr << "\n" << USAGE_MESSAGE;
+    cerr << "\n" << USAGE_MESSAGE;
     exit(EXIT_FAILURE);
   }
 

@@ -30,7 +30,7 @@
 #include "MurmurHash3.hpp"
 #include "kmc_api/kmc_file.h"
 
-// using namespace std;
+using namespace std;
 using namespace sdsl;
 
 static const char RCN[128] = {
@@ -56,8 +56,8 @@ private:
 
   void _canonical(const char *kmer, char *ckmer, const int &k) const {
     strcpy(ckmer, kmer);
-    std::transform(ckmer, ckmer + k, ckmer, _compl);
-    std::reverse(ckmer, ckmer + k);
+    transform(ckmer, ckmer + k, ckmer, _compl);
+    reverse(ckmer, ckmer + k);
     if (strcmp(kmer, ckmer) < 0)
       memmove(ckmer, kmer, k);
   }
@@ -66,7 +66,7 @@ private:
     uint k = strlen(kmer);
     char ckmer[k + 1];
     _canonical(kmer, ckmer, k);
-    std::array<uint64_t, 2> hashes;
+    array<uint64_t, 2> hashes;
     MurmurHash3_x64_128(ckmer, k, 0, reinterpret_cast<void *>(&hashes));
     return hashes[0];
   }
