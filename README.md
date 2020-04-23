@@ -21,8 +21,8 @@ will create an environment named `malvatest` that includes `MALVA` and its depen
 MALVA requires the following libraries and tools:
 
 * [sdsl-lite v2.1.1](https://github.com/simongog/sdsl-lite/tree/v2.1.1)
-* [KMC v3.1.0](https://github.com/refresh-bio/KMC/tree/v3.1.0)
-* [htslib v1.9](https://github.com/samtools/htslib/tree/1.9)
+* [KMC >= v3.1.1](https://github.com/refresh-bio/KMC/tree/v3.1.1)
+* [htslib >= v1.10.2](https://github.com/samtools/htslib/tree/1.10.2)
 
 This repository comes with them as submodules so you don't need to clone them separately.
 
