@@ -80,28 +80,15 @@ public:
     _bf[hash % _size] = 1;
   }
 
-  void add_refkey(const char *kmer) {
-    uint64_t hash = _get_hash(kmer);
-    _bf[hash % _size] = 0;
-  }
-
   bool test_key(const char *kmer) const {
     uint64_t hash = _get_hash(kmer);
     return _bf[hash % _size];
-  }
-
-  int get_times(const char *kmer) const {
-    uint64_t hash = _get_hash(kmer);
-    size_t bf_idx = hash % _size;
-    size_t cnts_idx = _brank(bf_idx);
-    return _times[cnts_idx];
   }
 
   void switch_mode() {
     _mode = true;
     _brank = rank_support_v<1>(&_bf);
     _counts = int_vector<16>(_brank(_size), 0, 16);
-    _times = int_vector<8>(_brank(_size), 0, 8);
   }
 
   bool increment(const char *kmer, const uint32 counter) {
@@ -113,21 +100,6 @@ public:
       size_t cnts_idx = _brank(bf_idx);
       uint32 new_value = _counts[cnts_idx] + counter;
       _counts[cnts_idx] = new_value;
-      ++_times[cnts_idx];
-    }
-    return true;
-  }
-
-    bool increment_with_average(const char *kmer, const uint32 counter) {
-    if (!_mode)
-      return false;
-    uint64_t hash = _get_hash(kmer);
-    size_t bf_idx = hash % _size;
-    if (_bf[bf_idx]) {
-      size_t cnts_idx = _brank(bf_idx);
-      uint32 new_value = (_counts[cnts_idx] * _times[cnts_idx] + counter) / (_times[cnts_idx]+1);
-      _counts[cnts_idx] = new_value < 250 ? new_value : 250;
-      ++_times[cnts_idx];
     }
     return true;
   }
@@ -152,7 +124,6 @@ private:
   bit_vector _bf;
   rank_support_v<1> _brank;
   int_vector<16> _counts;
-  int_vector<8> _times;
 };
 
 #endif

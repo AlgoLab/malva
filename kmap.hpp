@@ -45,7 +45,6 @@ using namespace std;
 
 struct KMAP {
   unordered_map<string, int> kmers;
-  unordered_map<string, int> _times;
 
   KMAP() {}
 
@@ -81,16 +80,6 @@ struct KMAP {
     if(kmers.find(ckmer) != kmers.end()) {
       uint32 new_value = kmers[ckmer] + counter;
       kmers[ckmer] = new_value;
-      ++_times[ckmer];
-    }
-  }
-
-  void increment_with_average(const char* kmer, int counter) {
-    string ckmer = canonical(kmer);
-    if(kmers.find(ckmer) != kmers.end()) {
-      uint32 new_value = (kmers[ckmer] * _times[ckmer] + counter) / (_times[ckmer]+1);
-      kmers[ckmer] = new_value < 250 ? new_value : 250;
-      ++_times[ckmer];
     }
   }
 
@@ -98,14 +87,6 @@ struct KMAP {
     string ckmer = canonical(kmer);
     if(kmers.find(ckmer) != kmers.end())
       return kmers[ckmer];
-    else
-      return 0;
-  }
-
-  int get_times(const char* kmer) {
-    string ckmer = canonical(kmer);
-    if(kmers.find(ckmer) != kmers.end())
-      return _times[ckmer];
     else
       return 0;
   }
