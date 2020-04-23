@@ -132,7 +132,7 @@ public:
     return true;
   }
 
-  uint8_t get_count(const char *kmer) const {
+  uint16_t get_count(const char *kmer) const {
     if (_mode) {
       uint64_t hash = _get_hash(kmer);
       size_t bf_idx = hash % _size;
