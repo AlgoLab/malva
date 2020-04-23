@@ -42,9 +42,7 @@ If you have KMC3, sdsl-lite, and htslib already installed you can skip the follo
 ```bash
 cd sdsl-lite
 ./install.sh ..
-cd ..
-./build.sh
-cd ../../KMC
+cd ../KMC
 make
 cd ../htslib
 make
@@ -133,7 +131,7 @@ the correcteness of the output VCF `chr20.genotyped.vcf` by comparing
 it with [chr20.malva.vcf](https://github.com/AlgoLab/malva/blob/master/example/chr20.malva.vcf).
 
 ## Haploid mode - Example
-To run MALVA in haploid mode on the example data provided:
+To run MALVA in haploid mode just use the `-1` argument.
 ```
 cd example
 tar xvfz haploid.tar.gz
