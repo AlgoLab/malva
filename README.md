@@ -40,7 +40,9 @@ cd malva
 If you have KMC3, sdsl-lite, and htslib already installed you can skip the following commands.
 
 ```bash
-cd sdsl-lite/build
+cd sdsl-lite
+./install.sh ..
+cd ..
 ./build.sh
 cd ../../KMC
 make
@@ -71,6 +73,8 @@ Arguments:
     -b, --bf-size                     bloom filter size in GB (default:4)
     -p, --strip-chr                   strip "chr" from sequence names (default:false)
     -u, --uniform                     use uniform a priori probabilities (default:false)
+    -v, --verbose                     output COVS and GTS in INFO column (default: false)
+    -1, --haploid                     run MALVA in haploid mode (default: false)
 
 Positional arguments:
     <reference>                       reference file in FASTA format (may be gzipped)
@@ -100,6 +104,8 @@ Arguments:
      -m              max amount of RAM in GB - KMC parameter (default:4)
      -p              strip "chr" from sequence names (dafault:false)
      -u              use uniform a priori probabilities (default:false)
+     -v              output COVS and GTS in INFO column (default: false)
+     -1              run MALVA in haploid mode (default: false)
 
 Positional arguments:
     <reference>     reference file in FASTA format (can be gzipped)
@@ -125,6 +131,14 @@ mkdir -p kmc_tmp
 This should take less than 1 minute to complete. You can also verify
 the correcteness of the output VCF `chr20.genotyped.vcf` by comparing
 it with [chr20.malva.vcf](https://github.com/AlgoLab/malva/blob/master/example/chr20.malva.vcf).
+
+## Haploid mode - Example
+To run MALVA in haploid mode on the example data provided:
+```
+cd example
+tar xvfz haploid.tar.gz
+../MALVA -1 -k 35 -r 43 -b 1 -f AF haploid.fa haploid.vcf haploid.fq > haploid.genotyped.vcf
+```
 
 ### Note
 - The tool has been tested only on 64bit Linux system.

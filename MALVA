@@ -28,6 +28,8 @@ Arguments:
      -m              max amount of RAM in GB - KMC parameter (default:'"${DEFAULT_MAX_MEM}"')
      -p              strip \"chr\" from sequence names (dafault:false)
      -u              use uniform a priori probabilities (default:false)
+     -v              output COVS and GTS in INFO column (default: false)
+     -1              run MALVA in haploid mode (default: false)
 
 Positional arguments:
      <reference>     reference file in FASTA format
@@ -48,8 +50,10 @@ bfsize=${DEFAULT_BF_SIZE}
 maxmem=${DEFAULT_MAX_MEM}
 strip_chr=""
 uniform=""
+verbose=""
+haploid=""
 
-while getopts "k:r:e:f:s:c:b:m:hpu" flag; do
+while getopts "k:r:e:f:s:c:b:m:hpuv1" flag; do
     case "${flag}" in
 	h) $(>&2 echo "${USAGE}")
 	   exit 0
@@ -73,6 +77,10 @@ while getopts "k:r:e:f:s:c:b:m:hpu" flag; do
 	p) strip_chr="-p"
 	   ;;
 	u) uniform="-u"
+	   ;;
+	v) verbose="-v"
+	   ;;
+	1) haploid="-1"
 	   ;;
     esac
 done
@@ -102,7 +110,7 @@ else
 fi
 
 (>&2 echo "[${SCRIPT_NAME}] Running ${BIN_NAME}")
-${EXECUTABLE} ${strip_chr} ${uniform} -k ${k} -r ${refk} -e ${erate} -f ${freq} -s ${samples} -c ${maxcov} -b ${bfsize}  ${reference} ${vcf_file} ${kmc_out_prefix}
+${EXECUTABLE} ${strip_chr} ${verbose} ${haploid} ${uniform} -k ${k} -r ${refk} -e ${erate} -f ${freq} -s ${samples} -c ${maxcov} -b ${bfsize}  ${reference} ${vcf_file} ${kmc_out_prefix}
 
 (>&2 echo "[${SCRIPT_NAME}] Cleaning up")
 rm -rf ${kmc_tmp_dir}

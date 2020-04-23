@@ -26,6 +26,8 @@
 
 #include <getopt.h>
 
+using namespace std;
+
 static const char *USAGE_MESSAGE =
   "Usage: malva-geno [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] "
   "<reference.fa> <variants.vcf> <kmc_output_prefix>\n"
@@ -42,7 +44,8 @@ static const char *USAGE_MESSAGE =
   "      -b, --bf-size                     bloom filter size in GB (default:4)\n"
   "      -p, --strip-chr                   strip \"chr\" from sequence names (default:false)\n"
   "      -u, --uniform                     use uniform a priori probabilities (default:false)\n"
-  // "      -v, --verbose                     output a detailed VCF (more information in the INFO column)\n"
+  "      -v, --verbose                     output COVS and GTS in INFO column (default: false)\n"
+  "      -1, --haploid                     run MALVA in haploid mode (default: false)\n"
   // "      -t, --threads                     number of threads (default: 1)\n"
   "\n";
 
@@ -50,20 +53,21 @@ namespace opt {
 static uint k = 35;
 static uint ref_k = 43;
 static float error_rate = 0.001;
-static std::string samples = "-";
-static std::string freq_key = "AF";
+static string samples = "-";
+static string freq_key = "AF";
 static uint max_coverage = 200;
 static uint64_t bf_size = ((uint64_t)0b1 << 35);
 static bool strip_chr = false;
 static bool uniform = false;
 static bool verbose = false;
+static bool haploid = false;
 // static size_t nThreads = 1;
-static std::string fasta_path;
-static std::string vcf_path;
-static std::string kmc_sample_path;
+static string fasta_path;
+static string vcf_path;
+static string kmc_sample_path;
 }
 
-static const char *shortopts = "k:r:e:s:f:c:b:hpu";
+static const char *shortopts = "k:r:e:s:f:c:b:hpuv1";
 
 static const struct option longopts[] = {
     {"kmer-size", required_argument, NULL, 'k'},
@@ -75,7 +79,8 @@ static const struct option longopts[] = {
     {"bf-size", required_argument, NULL, 'b'},
     {"strip-chr", required_argument, NULL, 'p'},
     {"uniform", required_argument, NULL, 'u'},
-    // {"verbose", no_argument, NULL, 'v'},
+    {"verbose", no_argument, NULL, 'v'},
+    {"haplod", no_argument, NULL, '1'},
     // {"threads", no_argument, NULL, 't'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}};
@@ -84,7 +89,7 @@ void parse_arguments(int argc, char **argv) {
   bool die = false;
   for (char c;
        (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) {
-    std::istringstream arg(optarg != NULL ? optarg : "");
+    istringstream arg(optarg != NULL ? optarg : "");
     switch (c) {
     case 'p':
       opt::strip_chr = true;
@@ -115,9 +120,12 @@ void parse_arguments(int argc, char **argv) {
       arg >> opt::bf_size;
       opt::bf_size = opt::bf_size * ((uint64_t)0b1 << 33);
       break;
-    // case 'v':
-    //   opt::verbose = true;
-    //   break;
+    case 'v':
+      opt::verbose = true;
+      break;
+    case '1':
+      opt::haploid = true;
+      break;
     // case 't':
     //   arg >> opt::nThreads;
     //   break;
@@ -125,20 +133,20 @@ void parse_arguments(int argc, char **argv) {
       die = true;
       break;
     case 'h':
-      std::cout << USAGE_MESSAGE;
+      cout << USAGE_MESSAGE;
       exit(EXIT_SUCCESS);
     }
   }
 
   if (argc - optind < 3) {
-    std::cerr << "malva : missing arguments\n";
+    cerr << "malva : missing arguments\n";
     die = true;
   } else if (argc - optind > 3) {
-    std::cerr << "malva : too many arguments\n";
+    cerr << "malva : too many arguments\n";
     die = true;
   }
   if (die) {
-    std::cerr << "\n" << USAGE_MESSAGE;
+    cerr << "\n" << USAGE_MESSAGE;
     exit(EXIT_FAILURE);
   }
 

@@ -26,31 +26,33 @@
 #include <string>
 #include <vector>
 
-typedef std::pair<std::string, long double> GT;
+using namespace std;
+
+typedef pair<string, long double> GT;
 
 struct Variant {
-  std::string seq_name;
-  int ref_pos;                                // Variant position 0-based
-  std::string idx;                            // ID
-  std::string ref_sub;                        // Reference base{s}
-  std::vector<std::string> alts;              // List of alternatives
-  float quality;                              // Quality field
-  std::string filter;                         // Filter field
-  std::string info;                           // Info field
-  std::vector<std::pair<int, int>> genotypes; // full list of genotypes
-  std::vector<bool> phasing;                  // true if genotype i-th is phased, false otherwise
-  int ref_size;                               // Len of reference base{s}
-  int min_size;                               // Length of the shortest string (ref and alts)
-  int max_size;                               // Length of the longest string (ref and alts)
-  bool has_alts = true;                       // false if no alternatives, i.e. only <CN>
-  bool is_present = true;                     // false if no sample has this variant
-  std::vector<float> frequencies;             // Allele frequency in the considered population
-  std::vector<float> coverages;               // Allele coverages (computed from input sample)
-  std::vector<GT> computed_gts;               // Computed genotypes
+  string seq_name;
+  int ref_pos;                        // Variant position 0-based
+  string idx;                         // ID
+  string ref_sub;                     // Reference base{s}
+  vector<string> alts;                // List of alternatives
+  float quality;                      // Quality field
+  string filter;                      // Filter field
+  string info;                        // Info field
+  vector<pair<int, int>> genotypes;   // full list of genotypes
+  vector<bool> phasing;               // true if genotype i-th is phased, false otherwise
+  int ref_size;                       // Len of reference base{s}
+  int min_size;                       // Length of the shortest string (ref and alts)
+  int max_size;                       // Length of the longest string (ref and alts)
+  bool has_alts = true;               // false if no alternatives, i.e. only <CN>
+  bool is_present = true;             // false if no sample has this variant
+  vector<float> frequencies;          // Allele frequency in the considered population
+  vector<uint> coverages;             // Allele coverages (computed from input sample)
+  vector<GT> computed_gts;            // Computed genotypes
 
   Variant() {}
 
-  Variant(bcf_hdr_t *vcf_header, bcf1_t *vcf_record, const std::string &freq_key, const bool uniform) {
+  Variant(bcf_hdr_t *vcf_header, bcf1_t *vcf_record, const string &freq_key, const bool uniform) {
     seq_name = bcf_hdr_id2name(vcf_header, vcf_record->rid);
     ref_pos = vcf_record->pos;
     idx = vcf_record->d.id;
@@ -64,9 +66,9 @@ struct Variant {
     for (int i = 1; i < vcf_record->n_allele; ++i) {
       char *curr_alt = vcf_record->d.allele[i];
       if (curr_alt[0] != '<')
-        alts.push_back(std::string(curr_alt));
+        alts.push_back(string(curr_alt));
     }
-    coverages.resize(alts.size() + 1, 0); //+1 for the reference allele
+    coverages.resize(alts.size() + 1, 0); // +1 for the reference allele
     quality = vcf_record->qual;
     filter = "PASS"; // TODO: get filter string from VCF
     info = ".";      // TODO: get info string from VCF
@@ -100,7 +102,7 @@ struct Variant {
   }
 
   void extract_frequencies(bcf_hdr_t *vcf_header, bcf1_t *vcf_record,
-                           const std::string &freq_key, const bool uniform) {
+                           const string &freq_key, const bool uniform) {
     int ndst = 0;
     float *altall_freqs = NULL;
     bcf_get_info_float(vcf_header, vcf_record, freq_key.c_str(),
@@ -113,7 +115,9 @@ struct Variant {
 	frequencies.push_back(freq[0]);
       }
       // Here we compute the frequency of the reference allele
-      frequencies[0] = 1.0 - std::accumulate(frequencies.begin(), frequencies.end(), 0.0);
+      frequencies[0] = 1.0 - accumulate(frequencies.begin(), frequencies.end(), 0.0);
+      if(frequencies[0] < 0) // this to avoid bad approximation
+	frequencies[0] = 0.0;
     } else {
       float uniform_freq = 1.0/(alts.size()+1);
       for (uint i = 0; i<alts.size()+1; ++i)
@@ -135,7 +139,7 @@ struct Variant {
      * Otherwise, ngt_ret_value is <= 0 that means an error occurred.
      ***/
     if (ngt_ret_value <= 0) {
-      // std::cout << "The record doesn't contain GT information" << std::endl;
+      // cout << "The record doesn't contain GT information" << endl;
       has_alts = false;
       return;
     }
@@ -160,7 +164,11 @@ struct Variant {
       }
       if(all_1 < 0) all_1 = 0;
       if(all_2 < 0) all_2 = 0;
-      genotypes.push_back(std::make_pair(all_1, all_2));
+
+      // FIXME: we store two alleles per sample even when we have an
+      // haploid VCF. We manage haploid VCF in a special way in
+      // var_block.hpp
+      genotypes.push_back(make_pair(all_1, all_2));
       phasing.push_back(is_phased);
     }
     free(gt_arr);
@@ -169,7 +177,7 @@ struct Variant {
   /**
    * Return the i-th allele, 0 is the reference
    **/
-  std::string get_allele(const int &i) const {
+  string get_allele(const int &i) const {
     if (i == 0)
       return ref_sub;
     else
@@ -180,11 +188,11 @@ struct Variant {
    * Given an allele, return its position in the list (1-based since 0 is the
    *reference)
    **/
-  int get_allele_index(const std::string &a) const {
+  int get_allele_index(const string &a) const {
     if(ref_sub.compare(a) == 0)
       return 0;
     int i = 1;
-    for (const std::string &all : alts) {
+    for (const string &all : alts) {
       if (all.compare(a) == 0)
         return i;
       ++i;
@@ -192,7 +200,7 @@ struct Variant {
     return -1;
   }
 
-  void set_coverage(const int &i, const float &cov) {
+  void set_coverage(const int i, const uint cov) {
     // maybe we can add some control here
     coverages[i] = cov;
   }
