@@ -188,11 +188,12 @@ public:
     for (uint i = 0; i < variants.size(); ++i) {
       Variant *v = &variants[i];
 
-      // If some allele is too covered, assign best_geno (ie 0 or 0/0) and continue
+      // If some allele is too covered, assign best_geno (ie 0 or 0/0)
+      // with quality 0 and continue
       bool continue_flag = false;
       for(const int &cov : v->coverages) {
         if(cov > max_cov) {
-          GT gt = make_pair(best_geno, 1);
+          GT gt = make_pair(best_geno, 0);
           v->add_genotype(gt);
           continue_flag = true;
           continue;
