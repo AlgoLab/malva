@@ -175,6 +175,13 @@ struct Variant {
   }
 
   /**
+   * Return the number of alleles (ref + alts)
+   **/
+  uint nalleles() const {
+    return alts.size() + 1;
+  }
+
+  /**
    * Return the i-th allele, 0 is the reference
    **/
   string get_allele(const int &i) const {

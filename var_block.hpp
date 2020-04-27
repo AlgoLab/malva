@@ -75,6 +75,26 @@ public:
       Variant *v = &variants[v_index];
 
       if (!v->is_present) {
+	// If the variant is not present in the considered population,
+	// we just take the kmer centered on the allele
+	for(uint allele_idx=0; allele_idx<v->nalleles(); ++allele_idx) {
+	  vector<vector<string>> tmp_kmers (1);
+	  string allele = v->get_allele(allele_idx);
+	  if(allele.size() <= (uint)k) {
+	    int left_extension = ceil((float)(k-allele.size())/2);
+	    int right_extension = k - allele.size() - left_extension;
+	    string re (reference, v->ref_pos - left_extension, left_extension);
+	    string le (reference, v->ref_pos + allele.size(), right_extension);
+	    string kmer = re + allele + le;
+            tmp_kmers[0].push_back(kmer);
+	  } else {
+	    for(uint i = 0; i<allele.size()-k+1; ++i) {
+	      string kmer (allele, i, k);
+	      tmp_kmers[0].push_back(kmer);
+	    }
+	  }
+	  _kmers[allele_idx] = tmp_kmers;
+	}
         kmers[v_index] = _kmers;
         continue;
       }
