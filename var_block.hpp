@@ -74,7 +74,11 @@ public:
 
       Variant *v = &variants[v_index];
 
-      if (!v->is_present) {
+      if (!v->is_present || v->ref_pos < k || v->ref_pos > (int)reference.size() - k) {
+	// Here we could use k/2 but with k the probability to not
+	// exceed the reference length due to insertions is
+	// higher. Anyway, it shouldn't be common to have variants
+	// near to reference ends
         kmers[v_index] = _kmers;
         continue;
       }
