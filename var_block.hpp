@@ -214,9 +214,16 @@ public:
         continue;
       }
 
+      // No allele of the variant is covered
+      uint total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0);
+      if(total_sum == 0) {
+	GT gt = make_pair(best_geno, 0);
+        v->add_genotype(gt);
+        continue;
+      }
+
       if(haploid) {
 	for (uint g1 = 0; g1 < v->coverages.size(); ++g1) {
-	  uint total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
 	  uint truth = v->coverages[g1];
 	  uint error = total_sum - truth;
 
@@ -236,7 +243,6 @@ public:
 	  for (uint g2 = g1; g2 < v->coverages.size(); ++g2) {
 	    double log_prior;
 	    double log_posterior;
-	    uint total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0.0);
 	    if (g1 == g2) {
 	      log_prior = 2*log(v->frequencies[g1]);
 	      uint truth = v->coverages[g1];
