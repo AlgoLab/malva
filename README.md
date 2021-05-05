@@ -58,9 +58,11 @@ make
 
 ## Usage
 ```
-Usage: malva-geno [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] <reference> <variants> <kmc_output_prefix>
+Usage: malva-geno <subcommand> [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] <reference> <variants> <kmc_output_prefix>
 
 Arguments:
+	<subcommand>                      either index to create the reference index or call to call call the genotypes.
+
     -h, --help                        display this help and exit
     -k, --kmer-size                   size of the kmers to index (default:35)
     -r, --ref-kmer-size               size of the reference kmers to index (default:43)
@@ -123,7 +125,8 @@ The last command is equivalent to run:
 ```
 mkdir -p kmc_tmp
 ../KMC/bin/kmc -m4 -k43 -fm chr20.sample.fa kmc.out kmc_tmp
-../malva-geno -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf kmc.out > chr20.genotyped.vcf
+../malva-geno index -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf kmc.out
+../malva-geno call -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf kmc.out > chr20.genotyped.vcf
 ```
 
 This should take less than 1 minute to complete. You can also verify
