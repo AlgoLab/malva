@@ -314,7 +314,7 @@ int index_main(int argc, char*argv[]) {
 
   context_bf.switch_mode();
 
-  ofstream index_stream(opt::vcf_path + MALVA_IDX_SUFFIX);
+  ofstream index_stream(opt::vcf_path + ".c" + to_string(opt::ref_k) + ".k" + to_string(opt::k) + MALVA_IDX_SUFFIX);
 
   context_bf >> index_stream;
   bf >> index_stream;
@@ -357,7 +357,7 @@ int call_main(int argc, char *argv[]) {
   KMAP ref_bf;
   BF context_bf;
   {
-    ifstream index_stream(opt::vcf_path + MALVA_IDX_SUFFIX);
+    ifstream index_stream(opt::vcf_path + ".c" + to_string(opt::ref_k) + ".k" + to_string(opt::k) + MALVA_IDX_SUFFIX);
 
     context_bf << index_stream;
     bf << index_stream;

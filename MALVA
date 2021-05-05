@@ -109,8 +109,16 @@ else
     (>&2 echo  "[${SCRIPT_NAME}] Found KMC output")
 fi
 
-(>&2 echo "[${SCRIPT_NAME}] Running ${BIN_NAME}")
-${EXECUTABLE} ${strip_chr} ${verbose} ${haploid} ${uniform} -k ${k} -r ${refk} -e ${erate} -f ${freq} -s ${samples} -c ${maxcov} -b ${bfsize}  ${reference} ${vcf_file} ${kmc_out_prefix}
+(>&2 echo "[${SCRIPT_NAME}] Running ${BIN_NAME} index")
+if [ ! -f ${vcf_file}."c"${refk}".k"${k}".malvax" ]
+then
+    ${EXECUTABLE} index ${strip_chr} ${verbose} ${haploid} ${uniform} -k ${k} -r ${refk} -e ${erate} -f ${freq} -s ${samples} -c ${maxcov} -b ${bfsize}  ${reference} ${vcf_file} ${kmc_out_prefix}
+else
+    (>&2 echo "[${SCRIPT_NAME}] Index file exists already.  Skipping creation.")
+fi
+
+(>&2 echo "[${SCRIPT_NAME}] Running ${BIN_NAME} call")
+${EXECUTABLE} call ${strip_chr} ${verbose} ${haploid} ${uniform} -k ${k} -r ${refk} -e ${erate} -f ${freq} -s ${samples} -c ${maxcov} -b ${bfsize}  ${reference} ${vcf_file} ${kmc_out_prefix}
 
 (>&2 echo "[${SCRIPT_NAME}] Cleaning up")
 rm -rf ${kmc_tmp_dir}
