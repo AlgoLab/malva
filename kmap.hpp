@@ -48,6 +48,38 @@ struct KMAP {
 
   KMAP() {}
 
+  ostream& operator>>(ostream& stream)
+  {
+    size_t size = kmers.size();
+    stream.write(reinterpret_cast<const char*>(&size), sizeof(size_t));
+    for (const auto& pair : kmers)
+      {
+	string::size_type l = pair.first.length();
+	stream.write(reinterpret_cast<const char*>(&l), sizeof(string::size_type));
+	stream.write(reinterpret_cast<const char*>((char*) pair.first.data()), l);
+	stream.write(reinterpret_cast<const char*>(&pair.second), sizeof(int));
+      }
+    return stream;
+  }
+
+  istream& operator<<(istream& stream)
+  {
+    size_t size;
+    stream.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+    for (size_t i = 0; i < size; ++i)
+      {
+	string::size_type l;
+	string k;
+	int v;
+	stream.read(reinterpret_cast<char*>(&l), sizeof(string::size_type));
+	k.resize(l);
+	stream.read(reinterpret_cast<char*>((char*) k.data()), l);
+	stream.read(reinterpret_cast<char*>(&v), sizeof(int));
+	kmers[k] = v;
+      }
+    return stream;
+  }
+
   static const char _compl(const char &c) { return RCN[c]; }
 
   string canonical(const char* kmer) {

@@ -59,7 +59,7 @@ struct Variant {
     ref_sub = vcf_record->d.allele[0];
     /**
      * There is vcf_record->rlen for the ref_size but sometimes it
-     * returns a wrong value. The only example I found is when all
+     * returns a wrong value. The only test I found is when all
      * alternatives are <CN> but maybe there could be more cases...
      **/
     ref_size = (int)ref_sub.size();

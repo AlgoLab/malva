@@ -18,49 +18,45 @@ will create an environment named `malvatest` that includes `MALVA` and its depen
 
 ### Dependencies
 
-MALVA requires the following libraries and tools:
+To manually compile MALVA you'll need the following libraries and tools installed in your system.
 
 * [sdsl-lite v2.1.1](https://github.com/simongog/sdsl-lite/tree/v2.1.1)
 * [KMC >= v3.1.1](https://github.com/refresh-bio/KMC/tree/v3.1.1)
 * [htslib >= v1.10.2](https://github.com/samtools/htslib/tree/1.10.2)
+* [Catch2](https://github.com/catchorg/Catch2)
+* OpenMP (not required)
+* zlib
+* cmake
 
-This repository comes with them as submodules so you don't need to clone them separately.
+Use your favorite package manager to install them before compiling MALVA.
+
+For example, on ubuntu
+```shell
+$ sudo apt install -y libsdsl-dev libhts-dev libkmc-dev libomp-dev zlib1g-dev
+```
 
 ### Download and installation
 
 To download and compile the code run the following commands.
 
-First clone the repository and cd into it.
-
-```bash
-git clone --recursive https://github.com/AlgoLab/malva.git
-cd malva
+```shell
+$ git clone https://github.com/AlgoLab/malva.git
+$ cd malva
+$ mkdir -p build
+$ cd build
+$ cmake -DCMAKE_BUILD_TYPE=Release ..
+$ make
 ```
 
-If you have KMC3, sdsl-lite, and htslib already installed you can skip the following commands.
-
-```bash
-cd sdsl-lite
-./install.sh ..
-cd ../KMC
-make
-cd ../htslib
-make
-cd ..
-```
-
-You can now compile MALVA from the root of you local copy of the repository simply by running make.
-
-```bash
-cd <path-to-malva-local-repo>
-make
-```
+If the compilation is successful, the `malva-geno` binary will be copied to the `${PROJECT_ROOT}/bin` directory.
 
 ## Usage
 ```
-Usage: malva-geno [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] <reference> <variants> <kmc_output_prefix>
+Usage: malva-geno <subcommand> [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] <reference> <variants> <kmc_output_prefix>
 
 Arguments:
+	<subcommand>                      either index to create the reference index or call to call call the genotypes.
+
     -h, --help                        display this help and exit
     -k, --kmer-size                   size of the kmers to index (default:35)
     -r, --ref-kmer-size               size of the reference kmers to index (default:43)
@@ -111,10 +107,10 @@ Positional arguments:
     <sample>        sample file in FASTA/FASTQ format (can be gzipped)
 ```
 
-## Example
-After you compiled `malva`, you can test it on the example data provided:
+## Test
+After you compiled `malva`, you can test it on the test data provided:
 ```
-cd example
+cd test
 tar xvfz data.tar.gz
 ../MALVA -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf chr20.sample.fa > chr20.genotyped.vcf
 ```
@@ -123,17 +119,18 @@ The last command is equivalent to run:
 ```
 mkdir -p kmc_tmp
 ../KMC/bin/kmc -m4 -k43 -fm chr20.sample.fa kmc.out kmc_tmp
-../malva-geno -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf kmc.out > chr20.genotyped.vcf
+../malva-geno index -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf kmc.out
+../malva-geno call -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf kmc.out > chr20.genotyped.vcf
 ```
 
 This should take less than 1 minute to complete. You can also verify
 the correcteness of the output VCF `chr20.genotyped.vcf` by comparing
-it with [chr20.malva.vcf](https://github.com/AlgoLab/malva/blob/master/example/chr20.malva.vcf).
+it with [chr20.malva.vcf](https://github.com/AlgoLab/malva/blob/master/test/chr20.malva.vcf).
 
-## Haploid mode - Example
+## Haploid mode - Test
 To run MALVA in haploid mode just use the `-1` argument.
 ```
-cd example
+cd test
 tar xvfz haploid.tar.gz
 ../MALVA -1 -k 35 -r 43 -b 1 -f AF haploid.fa haploid.vcf haploid.fq > haploid.genotyped.vcf
 ```
