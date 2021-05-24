@@ -72,6 +72,7 @@ private:
   }
 
 public:
+  BF() : _mode(false), _bf(0, 0) { _size = 0; };
   BF(const size_t size) : _mode(false), _bf(size, 0) { _size = size; }
   ~BF() {}
 
@@ -114,8 +115,28 @@ public:
     return 0;
   }
 
+  ostream& operator>>(ostream& stream)
+  {
+    stream.write(reinterpret_cast<const char*>(&_mode), sizeof(bool));
+    stream.write(reinterpret_cast<const char*>(&_size), sizeof(size_t));
+    _bf.serialize(stream);
+    // We don't serialize _brank since loading it will crash.
+    // TODO: this need some further investigation.
+    _counts.serialize(stream);
+    return stream;
+  }
+
+  istream& operator<<(istream& stream)
+  {
+    stream.read(reinterpret_cast<char*>(&_mode), sizeof(bool));
+    stream.read(reinterpret_cast<char*>(&_size), sizeof(size_t));
+    _bf.load(stream);
+    _brank = rank_support_v<1>(&_bf);
+    _counts.load(stream);
+    return stream;
+  }
+
 private:
-  BF() {}
   const BF &operator=(const BF &other) { return *this; }
   const BF &operator=(const BF &&other) { return *this; }
 

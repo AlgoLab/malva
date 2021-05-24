@@ -47,6 +47,8 @@ using namespace std;
 
 auto start_t = chrono::high_resolution_clock::now();
 
+static const char* MALVA_IDX_SUFFIX = ".malvax";
+
 void pelapsed(const string &s = "", const bool rollback = false) {
   auto now_t = chrono::high_resolution_clock::now();
   cerr << "[malva-geno/" << s << "] Time elapsed "
@@ -146,7 +148,34 @@ void print_cleaned_header(bcf_hdr_t *vcf_header, const bool verbose) {
 
 // ---------------------------------------------------------------------------
 
+int index_main(int argc, char *argv[]);
+int call_main(int argc, char *argv[]);
+
 int main(int argc, char *argv[]) {
+  if (argc < 2)
+    {
+      cerr << "malva missing arguments" << endl;
+      cerr << USAGE_MESSAGE << endl;
+      return 1;
+    }
+
+  if (strncmp(argv[1], "index", 5) == 0)
+    {
+      return index_main(argc-1, argv+1);
+    }
+  else if (strncmp(argv[1], "call", 4) == 0)
+    {
+      return call_main(argc-1, argv+1);
+    }
+  else
+    {
+      cerr << "Could not interpret command " << argv[1] <<"." << endl;
+      cerr << "Accepted commands are index and call." << endl;
+      return 1;
+    }
+}
+
+int index_main(int argc, char*argv[]) {
   hts_set_log_level(HTS_LOG_OFF);
 
   parse_arguments(argc, argv);
@@ -285,6 +314,70 @@ int main(int argc, char *argv[]) {
 
   context_bf.switch_mode();
 
+  ofstream index_stream(opt::vcf_path + ".c" + to_string(opt::ref_k) + ".k" + to_string(opt::k) + MALVA_IDX_SUFFIX);
+
+  context_bf >> index_stream;
+  bf >> index_stream;
+  ref_bf >> index_stream;
+
+  kseq_destroy(reference);
+  gzclose(fasta_in);
+  cout.flush();
+  return 0;
+}
+
+int call_main(int argc, char *argv[]) {
+  hts_set_log_level(HTS_LOG_OFF);
+
+  parse_arguments(argc, argv);
+
+  // STEP 0: open and check input files
+  gzFile fasta_in = gzopen(opt::fasta_path.c_str(), "r");
+  kseq_t *reference = kseq_init(fasta_in);
+
+  htsFile *vcf = bcf_open(opt::vcf_path.c_str(), "r");
+  bcf_hdr_t *vcf_header = bcf_hdr_read(vcf);
+  int is_file_flag = 0;
+  if(opt::samples != "-")
+    is_file_flag = 1;
+  int set_samples_code = bcf_hdr_set_samples(vcf_header, opt::samples.c_str(), is_file_flag);
+  if(set_samples_code != 0) {
+    cerr << "ERROR: VCF samples subset (code: " << set_samples_code << ")" << endl;
+    return 1;
+  }
+  bcf1_t *vcf_record = bcf_init();
+
+  CKMCFile kmer_db;
+  if (!kmer_db.OpenForListing(opt::kmc_sample_path)) {
+    cerr << "ERROR: cannot open " << opt::kmc_sample_path << endl;
+    return 1;
+  }
+
+  BF bf;
+  KMAP ref_bf;
+  BF context_bf;
+  {
+    ifstream index_stream(opt::vcf_path + ".c" + to_string(opt::ref_k) + ".k" + to_string(opt::k) + MALVA_IDX_SUFFIX);
+
+    context_bf << index_stream;
+    bf << index_stream;
+    ref_bf << index_stream;
+  }
+
+  // References are stored in a map
+  pelapsed("Reference parsing");
+  unordered_map<string, string> refs;
+  int l;
+  while ((l = kseq_read(reference)) >= 0) {
+    string id = reference->name.s;
+    if(id.compare(0,3,"chr") == 0 && opt::strip_chr) {
+      id = id.substr(3);
+    }
+    string seq (reference->seq.s);
+    refs[id] = seq;
+  }
+  pelapsed("Reference processed");
+
   // STEP 2: test variants present in read sample
   pelapsed("KMC output processing");
   uint32 klen, mode, min_counter, pref_len, sign_len, min_c, counter;
@@ -321,8 +414,10 @@ int main(int argc, char *argv[]) {
   vcf_record = bcf_init();
 
   pelapsed("VCF parsing and genotyping");
-  i = 0;
-  last_seq_name = "";
+  int i = 0;
+  string last_seq_name = "";
+  VB vb(opt::k, opt::error_rate);
+
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
     bcf_unpack(vcf_record, BCF_UN_STR);
     Variant v(vcf_header, vcf_record, opt::freq_key, opt::uniform);
@@ -376,7 +471,7 @@ int main(int argc, char *argv[]) {
     vb.output_variants(opt::haploid, opt::verbose);
     vb.clear();
   }
-  log_line = "Processed " + to_string(i) + " variants";
+  string log_line = "Processed " + to_string(i) + " variants";
   pelapsed(log_line);
 
   bcf_hdr_destroy(vcf_header);
