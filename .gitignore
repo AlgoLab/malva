@@ -48,7 +48,6 @@ auto/
 *.vtc
 *.bbl
 *.blg
-example
 include
 lib
 .idea

@@ -2,9 +2,14 @@ cmake_minimum_required(VERSION 3.10)
 
 project(MALVA VERSION 1.3.1)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 file(GLOB SOURCES *.cpp)
 
-add_executable(malva-geno ${SOURCES})
+add_subdirectory(test)
+
+add_executable(malva-geno ${SOURCES} common.hpp common.cpp argument_parser.cpp)
 
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})

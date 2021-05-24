@@ -23,6 +23,7 @@ To manually compile MALVA you'll need the following libraries and tools installe
 * [sdsl-lite v2.1.1](https://github.com/simongog/sdsl-lite/tree/v2.1.1)
 * [KMC >= v3.1.1](https://github.com/refresh-bio/KMC/tree/v3.1.1)
 * [htslib >= v1.10.2](https://github.com/samtools/htslib/tree/1.10.2)
+* [Catch2](https://github.com/catchorg/Catch2)
 * OpenMP (not required)
 * zlib
 * cmake
@@ -106,10 +107,10 @@ Positional arguments:
     <sample>        sample file in FASTA/FASTQ format (can be gzipped)
 ```
 
-## Example
-After you compiled `malva`, you can test it on the example data provided:
+## Test
+After you compiled `malva`, you can test it on the test data provided:
 ```
-cd example
+cd test
 tar xvfz data.tar.gz
 ../MALVA -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf chr20.sample.fa > chr20.genotyped.vcf
 ```
@@ -124,12 +125,12 @@ mkdir -p kmc_tmp
 
 This should take less than 1 minute to complete. You can also verify
 the correcteness of the output VCF `chr20.genotyped.vcf` by comparing
-it with [chr20.malva.vcf](https://github.com/AlgoLab/malva/blob/master/example/chr20.malva.vcf).
+it with [chr20.malva.vcf](https://github.com/AlgoLab/malva/blob/master/test/chr20.malva.vcf).
 
-## Haploid mode - Example
+## Haploid mode - Test
 To run MALVA in haploid mode just use the `-1` argument.
 ```
-cd example
+cd test
 tar xvfz haploid.tar.gz
 ../MALVA -1 -k 35 -r 43 -b 1 -f AF haploid.fa haploid.vcf haploid.fq > haploid.genotyped.vcf
 ```

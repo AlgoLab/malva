@@ -22,6 +22,7 @@
 #ifndef _MALVAARGUMENT_PARSER_HPP_
 #define _MALVAARGUMENT_PARSER_HPP_
 
+#include <iostream>
 #include <sstream>
 
 #include <getopt.h>
@@ -49,23 +50,23 @@ static const char *USAGE_MESSAGE =
   // "      -t, --threads                     number of threads (default: 1)\n"
   "\n";
 
-namespace opt {
-static uint k = 35;
-static uint ref_k = 43;
-static float error_rate = 0.001;
-static string samples = "-";
-static string freq_key = "AF";
-static uint max_coverage = 200;
-static uint64_t bf_size = ((uint64_t)0b1 << 35);
-static bool strip_chr = false;
-static bool uniform = false;
-static bool verbose = false;
-static bool haploid = false;
-// static size_t nThreads = 1;
-static string fasta_path;
-static string vcf_path;
-static string kmc_sample_path;
-}
+struct OPT {
+ uint k = 35;
+ uint ref_k = 43;
+ float error_rate = 0.001;
+ string samples = "-";
+ string freq_key = "AF";
+ uint max_coverage = 200;
+ uint64_t bf_size = ((uint64_t)0b1 << 35);
+ bool strip_chr = false;
+ bool uniform = false;
+ bool verbose = false;
+ bool haploid = false;
+//  size_t nThreads = 1;
+ string fasta_path;
+ string vcf_path;
+ string kmc_sample_path;
+};
 
 static const char *shortopts = "k:r:e:s:f:c:b:hpuv1";
 
@@ -85,74 +86,6 @@ static const struct option longopts[] = {
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}};
 
-void parse_arguments(int argc, char **argv) {
-  bool die = false;
-  for (char c;
-       (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) {
-    istringstream arg(optarg != NULL ? optarg : "");
-    switch (c) {
-    case 'p':
-      opt::strip_chr = true;
-      break;
-    case 'u':
-      opt::uniform = true;
-      break;
-    case 'k':
-      arg >> opt::k;
-      break;
-    case 'r':
-      arg >> opt::ref_k;
-      break;
-    case 'e':
-      arg >> opt::error_rate;
-      break;
-    case 's':
-      arg >> opt::samples;
-      break;
-    case 'f':
-      arg >> opt::freq_key;
-      break;
-    case 'c':
-      arg >> opt::max_coverage;
-      break;
-    case 'b':
-      // Let's consider this as GB
-      arg >> opt::bf_size;
-      opt::bf_size = opt::bf_size * ((uint64_t)0b1 << 33);
-      break;
-    case 'v':
-      opt::verbose = true;
-      break;
-    case '1':
-      opt::haploid = true;
-      break;
-    // case 't':
-    //   arg >> opt::nThreads;
-    //   break;
-    case '?':
-      die = true;
-      break;
-    case 'h':
-      cout << USAGE_MESSAGE;
-      exit(EXIT_SUCCESS);
-    }
-  }
-
-  if (argc - optind < 3) {
-    cerr << "malva : missing arguments\n";
-    die = true;
-  } else if (argc - optind > 3) {
-    cerr << "malva : too many arguments\n";
-    die = true;
-  }
-  if (die) {
-    cerr << "\n" << USAGE_MESSAGE;
-    exit(EXIT_FAILURE);
-  }
-
-  opt::fasta_path = argv[optind++];
-  opt::vcf_path = argv[optind++];
-  opt::kmc_sample_path = argv[optind++];
-}
+void parse_arguments(int argc, char **argv, struct OPT& opt);
 
 #endif
