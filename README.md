@@ -9,8 +9,8 @@ Alignment-free genotyping of a set of known variants (in VCF format) directly fr
 ## Install
 
 `MALVA` is available on bioconda.
-```bash
-conda create -n malvatest malva
+```shell
+$ conda create -n malvatest malva
 ```
 will create an environment named `malvatest` that includes `MALVA` and its dependencies.
 
@@ -18,43 +18,48 @@ will create an environment named `malvatest` that includes `MALVA` and its depen
 
 ### Dependencies
 
-MALVA requires the following libraries and tools:
+To manually compile MALVA you'll need the following libraries and tools installed in your system.
 
 * [sdsl-lite v2.1.1](https://github.com/simongog/sdsl-lite/tree/v2.1.1)
 * [KMC >= v3.1.1](https://github.com/refresh-bio/KMC/tree/v3.1.1)
 * [htslib >= v1.10.2](https://github.com/samtools/htslib/tree/1.10.2)
+* OpenMP (optional)
+* zlib
+* cmake
 
-This repository comes with them as submodules so you don't need to clone them separately.
+Use your favorite system-wide package manager to install them before compiling MALVA.
+
+For example, on ubuntu
+```shell
+$ sudo apt install -y libsdsl-dev libhts-dev libkmc-dev libomp-dev zlib1g-dev
+```
+
+Alternatively, you can also use conda (and bioconda) to install dependencies:
+
+For example (please adapt to you system setup):
+
+``` shell
+$ conda create -n malvadeps -c bioconda -c conda-forge htslib kmc sdsl-lite cmake
+```
+
+Notice that these dependencies are needed only if you want to compile MALVA from sources,
+since otherwise it is already available on Bioconda in binary form (see [above](#install)).
+
 
 ### Download and installation
 
 To download and compile the code run the following commands.
 
-First clone the repository and cd into it.
-
-```bash
-git clone --recursive https://github.com/AlgoLab/malva.git
-cd malva
+```shell
+$ git clone https://github.com/AlgoLab/malva.git
+$ cd malva
+$ mkdir -p build
+$ cd build
+$ cmake -DCMAKE_BUILD_TYPE=Release ..
+$ make
 ```
 
-If you have KMC3, sdsl-lite, and htslib already installed you can skip the following commands.
-
-```bash
-cd sdsl-lite
-./install.sh ..
-cd ../KMC
-make
-cd ../htslib
-make
-cd ..
-```
-
-You can now compile MALVA from the root of you local copy of the repository simply by running make.
-
-```bash
-cd <path-to-malva-local-repo>
-make
-```
+If the compilation is successful, the `malva-geno` binary will be copied to the `${PROJECT_ROOT}/bin` directory.
 
 ## Usage
 ```

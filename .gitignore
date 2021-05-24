@@ -48,6 +48,10 @@ auto/
 *.vtc
 *.bbl
 *.blg
+
+# Various
+build/
 example
 include
 lib
+.idea

@@ -33,10 +33,10 @@
 #include <math.h>
 #include <zlib.h>
 
-#include "hts_log.h"
-#include "kmc_api/kmc_file.h"
+#include "htslib/hts_log.h"
+#include "kmc_file.h"
 #include "kseq.h"
-#include "vcf.h"
+#include "htslib/vcf.h"
 
 #include "argument_parser.hpp"
 #include "bloom_filter.hpp"
