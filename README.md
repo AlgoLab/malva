@@ -9,8 +9,8 @@ Alignment-free genotyping of a set of known variants (in VCF format) directly fr
 ## Install
 
 `MALVA` is available on bioconda.
-```bash
-conda create -n malvatest malva
+```shell
+$ conda create -n malvatest malva
 ```
 will create an environment named `malvatest` that includes `MALVA` and its dependencies.
 
@@ -23,16 +23,28 @@ To manually compile MALVA you'll need the following libraries and tools installe
 * [sdsl-lite v2.1.1](https://github.com/simongog/sdsl-lite/tree/v2.1.1)
 * [KMC >= v3.1.1](https://github.com/refresh-bio/KMC/tree/v3.1.1)
 * [htslib >= v1.10.2](https://github.com/samtools/htslib/tree/1.10.2)
-* OpenMP (not required)
+* OpenMP (optional)
 * zlib
 * cmake
 
-Use your favorite package manager to install them before compiling MALVA.
+Use your favorite system-wide package manager to install them before compiling MALVA.
 
 For example, on ubuntu
 ```shell
 $ sudo apt install -y libsdsl-dev libhts-dev libkmc-dev libomp-dev zlib1g-dev
 ```
+
+Alternatively, you can also use conda (and bioconda) to install dependencies:
+
+For example (please adapt to you system setup):
+
+``` shell
+$ conda create -n malvadeps -c bioconda -c conda-forge htslib kmc sdsl-lite cmake
+```
+
+Notice that these dependencies are needed only if you want to compile MALVA from sources,
+since otherwise it is already available on Bioconda in binary form (see [above](#install)).
+
 
 ### Download and installation
 

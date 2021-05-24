@@ -6,8 +6,10 @@ file(GLOB SOURCES *.cpp)
 
 add_executable(malva-geno ${SOURCES})
 
-set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+set_target_properties(malva-geno
+    PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
+)
 
 find_package(OpenMP)
 find_package(ZLIB)
@@ -25,6 +27,12 @@ if (NOT KMC)
 else ()
     message(STATUS "KMC found ${KMC}")
 endif ()
+find_path(KMC_INCLUDE_DIR NAMES kmc_file.h PATHS ${CMAKE_SYSTEM_PREFIX_PATH} PATH_SUFFIXES "kmc")
+if (NOT KMC_INCLUDE_DIR)
+    message(FATAL_ERROR "kmc_file.h (part of libkmc-dev) required")
+else ()
+    message(STATUS "KMC includes found ${KMC_INCLUDE_DIR}")
+endif ()
 
 find_library(HTSLIB hts REQUIRED)
 if (NOT HTSLIB)
@@ -33,7 +41,10 @@ else ()
     message(STATUS "HTSLIB found ${HTSLIB}")
 endif ()
 
-include_directories("${PROJECT_SOURCE_DIR}")
+target_include_directories(malva-geno
+       PRIVATE ${PROJECT_SOURCE_DIR}
+       PRIVATE ${KMC_INCLUDE_DIR}
+)
 
 target_link_libraries(malva-geno
         PUBLIC sdsl

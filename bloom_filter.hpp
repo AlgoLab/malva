@@ -28,7 +28,7 @@
 #include <sdsl/bit_vectors.hpp>
 
 #include "MurmurHash3.hpp"
-#include "kmc/kmc_file.h"
+#include "kmc_file.h"
 
 using namespace std;
 using namespace sdsl;

@@ -34,7 +34,7 @@
 #include <zlib.h>
 
 #include "htslib/hts_log.h"
-#include "kmc/kmc_file.h"
+#include "kmc_file.h"
 #include "kseq.h"
 #include "htslib/vcf.h"
 
