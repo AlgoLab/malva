@@ -32,6 +32,8 @@
 
 #include <math.h>
 #include <zlib.h>
+#include <sys/resource.h>
+#include <sys/time.h>
 
 #include "htslib/hts_log.h"
 #include "kmc_file.h"
@@ -45,14 +47,63 @@
 
 using namespace std;
 
+long get_mem_usage(); //declare mem method
+double get_cpu_time(); //declare cpu_time method
+//variables used for time execution and elapsed
 auto start_t = chrono::high_resolution_clock::now();
+auto now_t = chrono::high_resolution_clock::now();
+auto *last_t = &start_t; //time_point
+//variable used for cpu-time elapsed
+double cpu_start = get_cpu_time();
 
 static const char* MALVA_IDX_SUFFIX = ".malvax";
 
+/*
+ Returns the peak (maximum so far) resident set size (physical memory use) measured in Megabytes.
+ */
+long get_mem_usage(){
+    struct rusage myusage;
+    
+    getrusage(RUSAGE_SELF, &myusage);
+    //Return the maximum resident set size used (in kilobytes).
+    return myusage.ru_maxrss;
+}
+
+/*
+ This is the total amount of time spent executing in user mode, expressed in a timeval structure. 
+ struct timeval {
+    time_t      tv_sec;     // seconds
+    suseconds_t tv_usec;    // microseconds }; 
+ */
+double get_cpu_time(){
+    struct rusage myusage;
+    getrusage(RUSAGE_SELF, &myusage);
+
+    long seconds = myusage.ru_utime.tv_sec;
+    long microseconds = myusage.ru_utime.tv_usec;
+    
+    double time = seconds + (microseconds*1e-6);
+    return time;
+}
+
 void pelapsed(const string &s = "", const bool rollback = false) {
-  auto now_t = chrono::high_resolution_clock::now();
-  cerr << "[malva-geno/" << s << "] Time elapsed "
-	    << chrono::duration_cast<chrono::milliseconds>(now_t - start_t).count()/1000 << "s";
+  //CALCULATE EXECUTION TIME
+  chrono::duration<double> old_now_t =  chrono::high_resolution_clock::now() - *last_t;
+  //PRINT EXECUTION TIME
+  cerr << "[malva-geno/" << s << "] Execution Time " << setprecision(3) << old_now_t.count() << "s" << endl;
+  
+  //CALCULATE DIFF FOR TIME ELAPSED
+  now_t = chrono::high_resolution_clock::now();
+  chrono::duration<double> diff = now_t - start_t;
+  //SAVE LAST PHASE TIME
+  last_t = &now_t; //maybe redundant run it every time
+  //PRINT TIME ELAPSED
+  cerr << "[malva-geno/" << s << "] Time elapsed " << setprecision(3) << diff.count() << "s" << endl;
+  //PRINT CPU TIME ELAPSED
+  cerr << "[malva-geno/" << s << "] Used CPU-time elapsed " << get_cpu_time() - cpu_start << "s" << endl;    
+  //PRINT MAX MEMORY USAGE
+  cerr << "[malva-geno/" << s << "] Maximum memory used " << get_mem_usage()/1024 << "Mb" << endl;
+  
   if(rollback) cerr << "\r";
   else cerr << endl;
 }
