@@ -52,7 +52,7 @@ VCFt read_vcf(const char* vcf){
 
 void compare_genotypes(const char* geno_vcf, const char* sample_vcf){
     //PRINT USED FILEs
-    std::cerr << "Compare \"" << geno_vcf << "\" with \"" << sample_vcf << "\"" << std::endl;
+    std::cerr << std::endl << "Compare \"" << geno_vcf << "\" with \"" << sample_vcf << "\"" << std::endl << std::endl;
     
     //LOAD GENO
     VCFt geno = read_vcf(geno_vcf);
@@ -61,7 +61,6 @@ void compare_genotypes(const char* geno_vcf, const char* sample_vcf){
     
     double compari = 0; //number of comparisons
     double match = 0; //number of records matched
-    int first_iter = 1; //first iteration of while
     
     /***
         * 1. read GENO_RECORD and SAMPLE_RECORD
@@ -74,18 +73,14 @@ void compare_genotypes(const char* geno_vcf, const char* sample_vcf){
             && (bcf_read(sample.bcf, sample.header, sample.record) == 0) ) {
         compari++;
         
-        //if first iteration unpack the records for read REF,ALT,INFO,etc 
-        if(first_iter){
-            //unpack GENO_RECORD
-            bcf_unpack(geno.record, BCF_UN_STR);
-            bcf_unpack(geno.record, BCF_UN_INFO);
+        //unpack GENO_RECORD for read REF,ALT,INFO,etc 
+        bcf_unpack(geno.record, BCF_UN_STR);
+        bcf_unpack(geno.record, BCF_UN_INFO);
 
-            //unpack SAMPLE_RECORD
-            bcf_unpack(sample.record, BCF_UN_STR);
-            bcf_unpack(sample.record, BCF_UN_INFO);
-            first_iter = 0;
-        }
-        
+        //unpack SAMPLE_RECORD for read REF,ALT,INFO,etc 
+        bcf_unpack(sample.record, BCF_UN_STR);
+        bcf_unpack(sample.record, BCF_UN_INFO);
+     
         //DEBUG: print all records comparisons (#CHROM #POS #REF)
         if(DEBUG){
             std::cerr << "Record Geno #CHROM " << geno.record->rid+1 << ", #POS " << geno.record->pos+1 << ", #REF " << geno.record->d.allele[0]<< std::endl;            
@@ -105,6 +100,7 @@ void compare_genotypes(const char* geno_vcf, const char* sample_vcf){
             std::cerr << "<< RECORD NOT FOUND: " << 
             "#CHROM " << geno.record->rid+1 << 
             " #POS " << geno.record->pos+1 << 
+            " #ID " << geno.record->d.id <<
             " #REF " << geno.record->d.allele[0] 
             << " >>" << std::endl;   
         }
@@ -120,6 +116,6 @@ void compare_genotypes(const char* geno_vcf, const char* sample_vcf){
     bcf_close(sample.bcf);
         
     //PRINT RESULTS: Match, comparisons, % precision match of vcfs
-    std::cerr << "Records Matched: " << match << " Records Processed: " << compari << std::endl;
-    std::cerr << "Value of Precision: " << 100*(match/compari) << "%" << std::endl;
+    std::cerr << std::endl << "Records Matched: " << match << " Records Processed: " << compari << std::endl;
+    std::cerr << "Value of Precision: " << 100*(match/compari) << "%" << std::endl << std::endl;
 }
