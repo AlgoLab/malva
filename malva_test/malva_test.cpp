@@ -1,21 +1,16 @@
 /**
- * MALVA - genotyping by Mapping-free ALternate-allele detection of known VAriants
- * Copyright (C) 2019  Giulia Bernardini, Luca Denti, Marco Previtali
- *
- * This file is part of MALVA.
- *
- * MALVA is free software: you can redistribute it and/or modify it
+ * MALVA-TEST is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * MALVA is distributed in the hope that it will be useful, but
+ * MALVA-TEST is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with MALVA; see the file LICENSE. If not, see
+ * along with MALVA-TEST; see the file LICENSE. If not, see
  * <https://www.gnu.org/licenses/>.
  **/
 
@@ -50,6 +45,15 @@ VCFt read_vcf(const char* vcf){
     return out;
 }
 
+int equal_allele(bcf1_t *gr, bcf1_t *sr){
+    for(int i = 0; i < (gr->n_allele); ++i){
+        if(strcmp(gr->d.allele[i], sr->d.allele[i]) != 0){
+            return 1;
+        }
+    }
+    return 0;
+}
+
 void compare_genotypes(const char* geno_vcf, const char* sample_vcf){
     //PRINT USED FILEs
     std::cerr << std::endl << "Compare \"" << geno_vcf << "\" with \"" << sample_vcf << "\"" << std::endl << std::endl;
@@ -65,7 +69,7 @@ void compare_genotypes(const char* geno_vcf, const char* sample_vcf){
     /***
         * 1. read GENO_RECORD and SAMPLE_RECORD
         * 2. check GENO_RECORD are covered in the SAMPLE_RECORD
-        * (same: #CHROM #POS #ID #REF)
+        * (same: #CHROM #POS #ID #REF #ALT)
         * 3. compari++
         * 4. if(record covered) match++ else (print it)
     ***/
@@ -90,19 +94,19 @@ void compare_genotypes(const char* geno_vcf, const char* sample_vcf){
         //COMPARE #CHROM (int64_t)
         //COMPARE #POS (int64_t)
         //COMPARE #ID (char* str)
-        //COMPARE #REF (char* str)
+        //COMPARE #REF and #ALT (char* str)
         if( (geno.record->rid+1 == sample.record->rid+1) 
             && (geno.record->pos+1 == sample.record->pos+1)
             && (strcmp(geno.record->d.id, sample.record->d.id) == 0)
-            && (strcmp(geno.record->d.allele[0], sample.record->d.allele[0]) == 0) ){    
+            && (equal_allele(geno.record, sample.record) == 0) ){   
             match++;
         }else{
             std::cerr << "<< RECORD NOT FOUND: " << 
             "#CHROM " << geno.record->rid+1 << 
             " #POS " << geno.record->pos+1 << 
             " #ID " << geno.record->d.id <<
-            " #REF " << geno.record->d.allele[0] 
-            << " >>" << std::endl;   
+            " #REF " << geno.record->d.allele[0] <<
+            " >>" << std::endl;   
         }
     }
     
@@ -116,6 +120,6 @@ void compare_genotypes(const char* geno_vcf, const char* sample_vcf){
     bcf_close(sample.bcf);
         
     //PRINT RESULTS: Match, comparisons, % precision match of vcfs
-    std::cerr << std::endl << "Records Matched: " << match << " Records Processed: " << compari << std::endl;
+    std::cerr << std::endl << "Records Matched: " << match << ", Records Processed: " << compari << std::endl;
     std::cerr << "Value of Precision: " << 100*(match/compari) << "%" << std::endl << std::endl;
 }

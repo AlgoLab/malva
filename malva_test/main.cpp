@@ -1,21 +1,16 @@
 /**
- * MALVA - genotyping by Mapping-free ALternate-allele detection of known VAriants
- * Copyright (C) 2019  Giulia Bernardini, Luca Denti, Marco Previtali
- *
- * This file is part of MALVA.
- *
- * MALVA is free software: you can redistribute it and/or modify it
+ * MALVA-TEST is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * MALVA is distributed in the hope that it will be useful, but
+ * MALVA-TEST is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with MALVA; see the file LICENSE. If not, see
+ * along with MALVA-TEST; see the file LICENSE. If not, see
  * <https://www.gnu.org/licenses/>.
  **/
 
