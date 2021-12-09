@@ -54,7 +54,54 @@ int equal_allele(bcf1_t *gr, bcf1_t *sr){
     return 0;
 }
 
-void compare_genotypes(const char* geno_vcf, const char* sample_vcf){
+int compare_genotypes(const uint8_t size, VCFt geno, VCFt sample){
+    //COMPARE GQ:
+    if(bcf_get_fmt(geno.header,geno.record,"GQ")->p[0]
+       != bcf_get_fmt(sample.header,sample.record,"GQ")->p[0]){
+        return 1;
+    }
+
+    //COMPARE GT:
+    uint8_t geno_n1 = bcf_get_fmt(geno.header,geno.record,"GT")->p[0];
+    uint8_t sample_n1 = bcf_get_fmt(sample.header,sample.record,"GT")->p[0];
+    //HAPLOID
+    if((size == 1) && (geno_n1 == sample_n1)){
+        return 0;
+    }
+    //NORMAL
+    if((size == 2) && (geno_n1 == sample_n1)){
+        if(bcf_get_fmt(geno.header,geno.record,"GT")->p[1]
+           == bcf_get_fmt(sample.header,sample.record,"GT")->p[1]){
+               return 0;
+           }
+    }
+    return 1;
+}
+
+void print_genotypes(const uint8_t size, VCFt geno){
+    std::cerr << " #DONOR ";
+    //PRINT GT
+    uint8_t n1 = bcf_get_fmt(geno.header,geno.record,"GT")->p[0];
+    if(n1 == 2){ // 0|Y
+        std::cerr << "0";
+    }
+    if(n1 == 4){ // 1|Y
+        std::cerr << "1";
+    }
+    if(size == 2){
+        uint8_t n2 = bcf_get_fmt(geno.header,geno.record,"GT")->p[1];
+        if(n2 == 2){ // X|0
+            std::cerr << "|0";
+        }
+        if(n2 == 4){ // X|1
+            std::cerr << "|1";
+        }
+    }
+    //PRINT GQ
+    std::cerr << ":" << unsigned(bcf_get_fmt(geno.header,geno.record,"GQ")->p[0]);
+}
+
+void compare_vcf(const char* geno_vcf, const char* sample_vcf){
     //PRINT USED FILEs
     std::cerr << std::endl << "Compare \"" << geno_vcf << "\" with \"" << sample_vcf << "\"" << std::endl << std::endl;
     
@@ -78,35 +125,40 @@ void compare_genotypes(const char* geno_vcf, const char* sample_vcf){
         compari++;
         
         //unpack GENO_RECORD for read REF,ALT,INFO,etc 
-        bcf_unpack(geno.record, BCF_UN_STR);
-        bcf_unpack(geno.record, BCF_UN_INFO);
+        bcf_unpack(geno.record,BCF_UN_ALL);
 
         //unpack SAMPLE_RECORD for read REF,ALT,INFO,etc 
-        bcf_unpack(sample.record, BCF_UN_STR);
-        bcf_unpack(sample.record, BCF_UN_INFO);
-     
+        bcf_unpack(sample.record,BCF_UN_ALL);
+
         //DEBUG: print all records comparisons (#CHROM #POS #REF)
         if(DEBUG){
             std::cerr << "Record Geno #CHROM " << geno.record->rid+1 << ", #POS " << geno.record->pos+1 << ", #REF " << geno.record->d.allele[0]<< std::endl;            
             std::cerr << "Record Sample #CHROM " << sample.record->rid+1 << ", #POS " << sample.record->pos+1 << ", #REF " << sample.record->d.allele[0]<< std::endl << std::endl;
         }
 
-        //COMPARE #CHROM (int64_t)
-        //COMPARE #POS (int64_t)
-        //COMPARE #ID (char* str)
-        //COMPARE #REF and #ALT (char* str)
+        /***
+            *COMPARE #CHROM (int64_t)
+            *COMPARE #POS (int64_t)
+            *COMPARE #ID (char* str)
+            *COMPARE #REF and #ALT (char* str)
+            *COMPARE GENOTYPES_VALUE_SIZE (uint8_t) #DONOR (example: size 2 -> 0|1 ; size 1(haplide) -> 0) 
+            *COMPARE GENOTYPES_VALUE(GT) and QUALITY(GQ) in #DONOR (example: 0|1:100) 
+        ***/
         if( (geno.record->rid+1 == sample.record->rid+1) 
             && (geno.record->pos+1 == sample.record->pos+1)
             && (strcmp(geno.record->d.id, sample.record->d.id) == 0)
-            && (equal_allele(geno.record, sample.record) == 0) ){   
+            && (equal_allele(geno.record, sample.record) == 0) 
+            && (bcf_get_fmt(geno.header, geno.record,"GT")->size == bcf_get_fmt(sample.header, sample.record,"GT")->size)
+            && (compare_genotypes(bcf_get_fmt(geno.header,geno.record,"GT")->size, geno, sample) == 0) ){   
             match++;
         }else{
-            std::cerr << "<< RECORD NOT FOUND: " << 
+            std::cerr << "<< NOT FOUND: " << 
             "#CHROM " << geno.record->rid+1 << 
             " #POS " << geno.record->pos+1 << 
             " #ID " << geno.record->d.id <<
-            " #REF " << geno.record->d.allele[0] <<
-            " >>" << std::endl;   
+            " #REF " << geno.record->d.allele[0];
+            print_genotypes(bcf_get_fmt(geno.header,geno.record,"GT")->size, geno);
+            std::cerr << " >>" << std::endl;
         }
     }
     

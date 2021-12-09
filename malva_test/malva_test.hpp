@@ -31,7 +31,7 @@ typedef struct {
 /* INPUT -> TWO FILEs VCF
    OUTPUT -> Print of % Precision match
  */
-void compare_genotypes(const char* sample_vcf, const char* geno_vcf);
+void compare_vcf(const char* sample_vcf, const char* geno_vcf);
 
 /* Initialize the vcf file and create a VCFf struct for easier reading.
    INPUT -> VCF file path
@@ -44,5 +44,16 @@ VCFt read_vcf(const char* vcf);
    OUTPUT -> 0 (if #REF and #ALT are equal), 1 (else)
 */
 int equal_allele(bcf1_t *gr, bcf1_t *sr);
+
+/* Compare GENOTYPES_VALUE(GT) and QUALITY(GQ) in #DONOR (GT:GQ) 
+   INPUT -> Size of GENO GT, GENO and SAMPLE VCFt
+   OUTPUT -> 0 (if QT and GQ are equal), 1 (else)
+*/
+int compare_genotypes(const uint8_t size, VCFt geno, VCFt sample);
+
+/* Print GENOTYPE_VALUE(GT) and QUALITY(GQ) in #DONOR (GT:GQ) 
+   INPUT -> Size of GENO GT, GENO VCFt
+*/
+void print_genotypes(const uint8_t size, VCFt geno);
 
 #endif //_MALVA_TEST_HPP_

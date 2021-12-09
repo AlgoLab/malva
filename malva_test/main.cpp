@@ -22,6 +22,6 @@ int main(int argc, char *argv[]) {
         std::cerr << "MISSING ARGUMENTS" << std::endl;
         return 1;
     }
-    compare_genotypes(argv[1],argv[2]);
+    compare_vcf(argv[1],argv[2]);
     return 0;
 }

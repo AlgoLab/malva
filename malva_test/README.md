@@ -47,14 +47,14 @@ After you compiled `malva-test`, you can test it on the example data provided:
 This should take less than 1 minute to complete.
 Change the values of some records of "geno.example.vcf" to test the accuracy (I changed two records below).
 
-Example output:
+Example output(with two record not found):
 ```
 Compare "geno.example.vcf" with "sample.example.vcf"
 
-<< RECORD NOT FOUND: #CHROM 20 #POS 60343 #ID rs527639301 #REF A >>
-<< RECORD NOT FOUND: #CHROM 20 #POS 60419 #ID rs538242240 #REF G >>
+<< NOT FOUND: #CHROM 20 #POS 60343 #ID rs527639301 #REF G #DONOR 0|0:1 >>
+<< NOT FOUND: #CHROM 20 #POS 60419 #ID rs538242240 #REF A #DONOR 1|0:0 >>
 
-Records Matched: 245 Records Processed: 247
+Records Matched: 245, Records Processed: 247
 Value of Precision: 99.1903%
 ```
 
