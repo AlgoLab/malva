@@ -54,7 +54,7 @@ int equal_allele(bcf1_t *gr, bcf1_t *sr){
     return 0;
 }
 
-int compare_gt(const uint8_t size, VCFt geno, VCFt sample){
+int equal_gt(const uint8_t size, VCFt geno, VCFt sample){
     //EXTRACT xEX -> X|A 
     uint8_t geno_n1 = bcf_get_fmt(geno.header,geno.record,"GT")->p[0];
     uint8_t sample_n1 = bcf_get_fmt(sample.header,sample.record,"GT")->p[0];
@@ -72,7 +72,7 @@ int compare_gt(const uint8_t size, VCFt geno, VCFt sample){
     return 1;
 }
 
-int compare_gq(VCFt geno, VCFt sample){
+int equal_gq(VCFt geno, VCFt sample){
     int tolerance = 10;
     //EXTRACT GQ GENO
     int geno_gq = (int)bcf_get_fmt(geno.header,geno.record,"GQ")->p[0];
@@ -120,6 +120,20 @@ void print_genotypes(const uint8_t size, VCFt geno){
     std::cerr << ":" << unsigned(bcf_get_fmt(geno.header,geno.record,"GQ")->p[0]);
 }
 
+void print_alt(bcf1_t *gr){
+    if((gr->n_allele) > 1){ //if have ALTs
+        std::cerr << " #ALT ";
+    }
+    int i = 1;
+    while(i < (gr->n_allele)){
+        std::cerr << gr->d.allele[i];
+        ++i;
+        if(i < (gr->n_allele)){
+            std::cerr << ",";
+        }
+    }
+}
+
 void compare_vcf(const char* geno_vcf, const char* sample_vcf){
     //PRINT USED FILEs
     std::cerr << std::endl << "Compare \"" << geno_vcf << "\" with \"" << sample_vcf << "\"" << std::endl << std::endl;
@@ -156,21 +170,21 @@ void compare_vcf(const char* geno_vcf, const char* sample_vcf){
         }
 
         /***
-            *COMPARE #CHROM (int64_t)
-            *COMPARE #POS (int64_t)
-            *COMPARE #ID (char* str)
-            *COMPARE #REF and #ALT (char* str)
-            *COMPARE GENOTYPES_VALUE_SIZE (uint8_t) #DONOR (example: size 2 -> 0|1 ; size 1(haplide) -> 0) 
-            *COMPARE GENOTYPES_VALUE(GT) in #DONOR (example: 0|1) 
-            *COMPARE GENOTYPES_QUALITY(GQ) in #DONOR (:100)
+            *1) COMPARE #CHROM (int64_t)
+            *2) COMPARE #POS (int64_t)
+            *3) COMPARE #ID (char* str)
+            *4) COMPARE #REF and #ALT (char* str)
+            *5) COMPARE GENOTYPES_VALUE_SIZE (uint8_t) in #DONOR (example: size 2 -> 0|1 ; size 1(haplide) -> 0) 
+            *6) COMPARE GENOTYPES_VALUE(GT) in #DONOR (example: 0|1) 
+            *7) COMPARE GENOTYPES_QUALITY(GQ) in #DONOR (:100)
         ***/
         if( (geno.record->rid+1 == sample.record->rid+1) 
             && (geno.record->pos+1 == sample.record->pos+1)
             && (strcmp(geno.record->d.id, sample.record->d.id) == 0)
             && (equal_allele(geno.record, sample.record) == 0) 
             && (bcf_get_fmt(geno.header, geno.record,"GT")->size == bcf_get_fmt(sample.header, sample.record,"GT")->size)
-            && (compare_gt(bcf_get_fmt(geno.header,geno.record,"GT")->size, geno, sample) == 0) 
-            && (compare_gq(geno, sample) == 0) ){   
+            && (equal_gt(bcf_get_fmt(geno.header,geno.record,"GT")->size, geno, sample) == 0) 
+            && (equal_gq(geno, sample) == 0) ){   
             match++;
         }else{
             std::cerr << "<< NOT FOUND: " << 
@@ -178,6 +192,7 @@ void compare_vcf(const char* geno_vcf, const char* sample_vcf){
             " #POS " << geno.record->pos+1 << 
             " #ID " << geno.record->d.id <<
             " #REF " << geno.record->d.allele[0];
+            print_alt(geno.record);
             print_genotypes(bcf_get_fmt(geno.header,geno.record,"GT")->size, geno);
             std::cerr << " >>" << std::endl;
         }
