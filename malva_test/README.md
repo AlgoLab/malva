@@ -32,12 +32,15 @@ $ make
 
 ## Usage
 ```
-Usage: malva-test <output_malva.vcf> <sample.vcf>
-Arguments:
+Usage: malva-test -t [tolerance_value] <output_malva.vcf> <sample.vcf>
+Arguments(optional):
+    -t                                  tolerance range match of GQ (default 0)
+Positional Arguments(mandatory):
     <output_malva.vcf>                  variants file in VCF format.
     <sample.vcf>                        variants file in VCF format.
 ```
-REQUIREMENT: The RECORDS of <output_malva.vcf> <sample.vcf> must be of the same number and sorted. 
+REQUIREMENTS: The RECORDS of <output_malva.vcf> <sample.vcf> must be of the same number and sorted. 
+              Tolerance value must be between 0 and 100. 
 
 ## Example
 After you compiled `malva-test`, you can test it on the example data provided:
@@ -49,10 +52,12 @@ Change the values of some records of "geno.example.vcf" to test the accuracy (I 
 
 Example output(with two record not found):
 ```
+./malva-test -t 20 geno.example.vcf sample.example.vcf 
+
 Compare "geno.example.vcf" with "sample.example.vcf"
 
-<< NOT FOUND: #CHROM 20 #POS 60343 #ID rs527639301 #REF G #DONOR 0|0:1 >>
-<< NOT FOUND: #CHROM 20 #POS 60419 #ID rs538242240 #REF A #DONOR 1|0:0 >>
+<< NOT FOUND: #CHROM 2 #POS 60343 #ID rs527639301 #REF G #ALT A #DONOR 0|0:0 >>
+<< NOT FOUND: #CHROM 20 #POS 60419 #ID rs538242240 #REF A #ALT G #DONOR 0|0:50 >>
 
 Records Matched: 245, Records Processed: 247
 Value of Precision: 99.1903%

@@ -28,6 +28,9 @@ typedef struct {
     bcf1_t *record;
 } VCFt;
 
+//VALUE of TOLERANCE RANGE MATCH of GQ
+extern int tolerance; //DEFAULT 0
+
 /* INPUT -> TWO FILEs VCF
    OUTPUT -> Print of % Precision match
  */

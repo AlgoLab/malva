@@ -73,7 +73,6 @@ int equal_gt(const uint8_t size, VCFt geno, VCFt sample){
 }
 
 int equal_gq(VCFt geno, VCFt sample){
-    int tolerance = 10;
     //EXTRACT GQ GENO
     int geno_gq = (int)bcf_get_fmt(geno.header,geno.record,"GQ")->p[0];
     //EXTRACT GQ SAMPLE

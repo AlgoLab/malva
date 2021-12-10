@@ -16,12 +16,35 @@
 
 #include "malva_test.hpp"
 
+//VALUE of TOLERANCE RANGE MATCH of GQ
+int tolerance = 0;
+
 int main(int argc, char *argv[]) {
-    //We expect 3 arguments: the program name, the geno path and the sample path
+    //We expect at least three arguments
     if (argc < 3) {
-        std::cerr << "MISSING ARGUMENTS" << std::endl;
+        std::cerr << "<< MISSING ARGUMENTS >>" << std::endl;
+        return 1;
+    }else if(argc == 3){
+        //[0]Program Name, [1]Geno_path, [2]Sample_path
+        compare_vcf(argv[1],argv[2]);
+    }else if(argc == 4){
+        std::cerr << "<< MISSING ARGUMENTS >>" << std::endl;
+        return 1;
+    }else if(argc == 5){ 
+        //[0]Program Name, [1]Option, [2]Opt_Value, [3]Geno_path, [4]Sample_path
+        if(strcmp(argv[1], "-t") != 0){
+            std::cerr << "<< WRONG OPTION COMMAND, try -t >>" << std::endl;
+            return 1;
+        }
+        //tolerance min: 0 (default value), max: 100
+        tolerance = atoi(argv[2]);
+        if( (tolerance < 0) || (tolerance > 100) ){
+            std::cerr << "<< WRONG OPTION VALUE: Must be between 0 and 100 >>" << std::endl;
+            return 1;
+        }
+        compare_vcf(argv[3],argv[4]);
+    }else{
         return 1;
     }
-    compare_vcf(argv[1],argv[2]);
     return 0;
 }
