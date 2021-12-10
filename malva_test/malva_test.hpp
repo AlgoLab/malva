@@ -45,11 +45,17 @@ VCFt read_vcf(const char* vcf);
 */
 int equal_allele(bcf1_t *gr, bcf1_t *sr);
 
-/* Compare GENOTYPES_VALUE(GT) and QUALITY(GQ) in #DONOR (GT:GQ) 
+/* Compare GENOTYPES_VALUE(GT) in #DONOR (GT:GQ) 
    INPUT -> Size of GENO GT, GENO and SAMPLE VCFt
-   OUTPUT -> 0 (if QT and GQ are equal), 1 (else)
+   OUTPUT -> 0 (if GT are equal), 1 (else)
 */
-int compare_genotypes(const uint8_t size, VCFt geno, VCFt sample);
+int compare_gt(const uint8_t size, VCFt geno, VCFt sample);
+
+/* Compare GENOTYPES_QUALITY(GQ) in #DONOR (GT:GQ) 
+   INPUT -> GENO and SAMPLE VCFt
+   OUTPUT -> 0 (if GQ are equal, considering the tolerance), 1 (else)
+*/
+int compare_gq(VCFt geno, VCFt sample);
 
 /* Print GENOTYPE_VALUE(GT) and QUALITY(GQ) in #DONOR (GT:GQ) 
    INPUT -> Size of GENO GT, GENO VCFt

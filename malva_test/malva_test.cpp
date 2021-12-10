@@ -54,26 +54,45 @@ int equal_allele(bcf1_t *gr, bcf1_t *sr){
     return 0;
 }
 
-int compare_genotypes(const uint8_t size, VCFt geno, VCFt sample){
-    //COMPARE GQ:
-    if(bcf_get_fmt(geno.header,geno.record,"GQ")->p[0]
-       != bcf_get_fmt(sample.header,sample.record,"GQ")->p[0]){
-        return 1;
-    }
-
-    //COMPARE GT:
+int compare_gt(const uint8_t size, VCFt geno, VCFt sample){
+    //EXTRACT xEX -> X|A 
     uint8_t geno_n1 = bcf_get_fmt(geno.header,geno.record,"GT")->p[0];
     uint8_t sample_n1 = bcf_get_fmt(sample.header,sample.record,"GT")->p[0];
     //HAPLOID
     if((size == 1) && (geno_n1 == sample_n1)){
         return 0;
     }
-    //NORMAL
+    //NORMAL then EXTRACT yEY -> B|Y
     if((size == 2) && (geno_n1 == sample_n1)){
         if(bcf_get_fmt(geno.header,geno.record,"GT")->p[1]
            == bcf_get_fmt(sample.header,sample.record,"GT")->p[1]){
                return 0;
            }
+    }
+    return 1;
+}
+
+int compare_gq(VCFt geno, VCFt sample){
+    int tolerance = 10;
+    //EXTRACT GQ GENO
+    int geno_gq = (int)bcf_get_fmt(geno.header,geno.record,"GQ")->p[0];
+    //EXTRACT GQ SAMPLE
+    int sample_gq = (int)bcf_get_fmt(sample.header,sample.record,"GQ")->p[0];
+    //CALCULATE THE TOLERANCE RANGE [min, max]
+    int min, max;
+    if( (geno_gq-tolerance) < 0 ){
+        min = 0;
+    } else{
+        min = geno_gq - tolerance;
+    }
+    if( (geno_gq+tolerance) > 100 ){
+        max = 100;
+    } else{
+        max = geno_gq + tolerance;
+    }
+    //CHECK IF SAMPLE_GQ is in the TOLERANCE RANGE
+    if( (min<=sample_gq) && (sample_gq<= max) ){
+        return 0;
     }
     return 1;
 }
@@ -142,14 +161,16 @@ void compare_vcf(const char* geno_vcf, const char* sample_vcf){
             *COMPARE #ID (char* str)
             *COMPARE #REF and #ALT (char* str)
             *COMPARE GENOTYPES_VALUE_SIZE (uint8_t) #DONOR (example: size 2 -> 0|1 ; size 1(haplide) -> 0) 
-            *COMPARE GENOTYPES_VALUE(GT) and QUALITY(GQ) in #DONOR (example: 0|1:100) 
+            *COMPARE GENOTYPES_VALUE(GT) in #DONOR (example: 0|1) 
+            *COMPARE GENOTYPES_QUALITY(GQ) in #DONOR (:100)
         ***/
         if( (geno.record->rid+1 == sample.record->rid+1) 
             && (geno.record->pos+1 == sample.record->pos+1)
             && (strcmp(geno.record->d.id, sample.record->d.id) == 0)
             && (equal_allele(geno.record, sample.record) == 0) 
             && (bcf_get_fmt(geno.header, geno.record,"GT")->size == bcf_get_fmt(sample.header, sample.record,"GT")->size)
-            && (compare_genotypes(bcf_get_fmt(geno.header,geno.record,"GT")->size, geno, sample) == 0) ){   
+            && (compare_gt(bcf_get_fmt(geno.header,geno.record,"GT")->size, geno, sample) == 0) 
+            && (compare_gq(geno, sample) == 0) ){   
             match++;
         }else{
             std::cerr << "<< NOT FOUND: " << 
