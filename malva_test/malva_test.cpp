@@ -16,11 +16,8 @@
 
 #include "malva_test.hpp"
 
-const int DEBUG = 0; //=1 FOR DEBUG PRINTs
-
 VCFt read_vcf(const char* vcf){
     VCFt out = {NULL, NULL, NULL};
-        
     //VCF INIT
     htsFile *vcf_bcf = NULL;
     //OPEN FILE and SAVE FILE METADATA
@@ -29,7 +26,6 @@ VCFt read_vcf(const char* vcf){
         throw std::runtime_error("Unable to open vcf file.");
     }
     out.bcf = vcf_bcf;
-    
     bcf_hdr_t *vcf_header = NULL;
     //EXTRACT and SAVE VCF HEALDER
     vcf_header = bcf_hdr_read(vcf_bcf);
@@ -37,7 +33,6 @@ VCFt read_vcf(const char* vcf){
         throw std::runtime_error("Unable to read vcf header.");
     }
     out.header = vcf_header;
-    
     //EXTRACT  and SAVE VCF RECORDs
     bcf1_t *vcf_record = bcf_init();
     out.record = vcf_record;
@@ -58,7 +53,7 @@ int equal_gt(const uint8_t size, VCFt geno, VCFt sample){
     //EXTRACT xEX -> X|A 
     uint8_t geno_n1 = bcf_get_fmt(geno.header,geno.record,"GT")->p[0];
     uint8_t sample_n1 = bcf_get_fmt(sample.header,sample.record,"GT")->p[0];
-    //HAPLOID
+    //HAPLOID (only one geno)
     if((size == 1) && (geno_n1 == sample_n1)){
         return 0;
     }
@@ -79,17 +74,19 @@ int equal_gq(VCFt geno, VCFt sample){
     int sample_gq = (int)bcf_get_fmt(sample.header,sample.record,"GQ")->p[0];
     //CALCULATE THE TOLERANCE RANGE [min, max]
     int min, max;
+    //if min < 0, set as 0
     if( (geno_gq-tolerance) < 0 ){
         min = 0;
     } else{
         min = geno_gq - tolerance;
     }
+    //if max > 100, set as 100
     if( (geno_gq+tolerance) > 100 ){
         max = 100;
     } else{
         max = geno_gq + tolerance;
     }
-    //CHECK IF SAMPLE_GQ is in the TOLERANCE RANGE
+    //CHECK IF SAMPLE_GQ is in the TOLERANCE RANGE [min, max]
     if( (min<=sample_gq) && (sample_gq<= max) ){
         return 0;
     }
@@ -98,7 +95,8 @@ int equal_gq(VCFt geno, VCFt sample){
 
 void print_genotypes(const uint8_t size, VCFt geno){
     std::cerr << " #DONOR ";
-    //PRINT GT
+    //NOTE: look 6.4.7 Encoding Genotypes (vcf 4.1 standard)
+    //PRINT GT:
     uint8_t n1 = bcf_get_fmt(geno.header,geno.record,"GT")->p[0];
     if(n1 == 2){ // 0|Y
         std::cerr << "0";
@@ -115,7 +113,7 @@ void print_genotypes(const uint8_t size, VCFt geno){
             std::cerr << "|1";
         }
     }
-    //PRINT GQ
+    //PRINT GQ:
     std::cerr << ":" << unsigned(bcf_get_fmt(geno.header,geno.record,"GQ")->p[0]);
 }
 
@@ -127,6 +125,7 @@ void print_alt(bcf1_t *gr){
     while(i < (gr->n_allele)){
         std::cerr << gr->d.allele[i];
         ++i;
+        //print "," if there are more ALTs
         if(i < (gr->n_allele)){
             std::cerr << ",";
         }
@@ -148,7 +147,7 @@ void compare_vcf(const char* geno_vcf, const char* sample_vcf){
     /***
         * 1. read GENO_RECORD and SAMPLE_RECORD
         * 2. check GENO_RECORD are covered in the SAMPLE_RECORD
-        * (same: #CHROM #POS #ID #REF #ALT)
+        * (same: #CHROM #POS #ID #REF #ALT #DONOR)
         * 3. compari++
         * 4. if(record covered) match++ else (print it)
     ***/
@@ -158,15 +157,8 @@ void compare_vcf(const char* geno_vcf, const char* sample_vcf){
         
         //unpack GENO_RECORD for read REF,ALT,INFO,etc 
         bcf_unpack(geno.record,BCF_UN_ALL);
-
         //unpack SAMPLE_RECORD for read REF,ALT,INFO,etc 
         bcf_unpack(sample.record,BCF_UN_ALL);
-
-        //DEBUG: print all records comparisons (#CHROM #POS #REF)
-        if(DEBUG){
-            std::cerr << "Record Geno #CHROM " << geno.record->rid+1 << ", #POS " << geno.record->pos+1 << ", #REF " << geno.record->d.allele[0]<< std::endl;            
-            std::cerr << "Record Sample #CHROM " << sample.record->rid+1 << ", #POS " << sample.record->pos+1 << ", #REF " << sample.record->d.allele[0]<< std::endl << std::endl;
-        }
 
         /***
             *1) COMPARE #CHROM (int64_t)
@@ -186,6 +178,7 @@ void compare_vcf(const char* geno_vcf, const char* sample_vcf){
             && (equal_gq(geno, sample) == 0) ){   
             match++;
         }else{
+            //print the record not founded
             std::cerr << "<< NOT FOUND: " << 
             "#CHROM " << geno.record->rid+1 << 
             " #POS " << geno.record->pos+1 << 

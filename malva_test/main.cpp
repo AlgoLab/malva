@@ -19,6 +19,13 @@
 //VALUE of TOLERANCE RANGE MATCH of GQ
 int tolerance = 0;
 
+/*
+    *1. Check if the arguments are at least three 
+    *2. If 3 execute compare_vcf
+    *3. If 4 throw an error
+    *4. If 5 check if the Option is "-t", else throw an error
+    *5. If the Option value is accepted execute compare_vcf, else throw an error
+*/
 int main(int argc, char *argv[]) {
     //We expect at least three arguments
     if (argc < 3) {

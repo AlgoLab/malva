@@ -26,7 +26,7 @@ $ sudo apt install -y libhts-dev zlib1g-dev
 To download and compile the code run the following commands.
 
 ```shell
-$ cd malva/malva_test/
+$ cd <path-to-malva-test>
 $ make
 ```
 
@@ -45,23 +45,36 @@ REQUIREMENTS: The RECORDS of <output_malva.vcf> <sample.vcf> must be of the same
 ## Example
 After you compiled `malva-test`, you can test it on the example data provided:
 ```
-./malva-test geno.example.vcf sample.example.vcf 
+./malva-test -t 10 malva.example.vcf sample.example.vcf 
 ```
 This should take less than 1 minute to complete.
-Change the values of some records of "geno.example.vcf" to test the accuracy (I changed two records below).
 
-Example output(with two record not found):
+In the example the following records have been changed inside "malva.example.vcf":
+- [record row #257]: Changed #CHROM (20 -> 2)
+- [record row #258]: Changed #POS (60419 -> 60418)
+- [record row #259]: Changed #ID (rs149529999 -> rs149529990)
+- [record row #260]: Changed #REF (T -> A)
+- [record row #261]: Changed #ALT (C -> G)
+- [record row #262]: Changed GT in #DONOR (0/0 -> 1/0)
+- [record row #263]: Changed GQ in #DONOR (0 -> 15)
+- [record row #264]: Changed GQ in #DONOR (0 -> 5)
+
+Example output:
 ```
-./malva-test -t 20 geno.example.vcf sample.example.vcf 
-
-Compare "geno.example.vcf" with "sample.example.vcf"
+Compare "malva.example.vcf" with "sample.example.vcf"
 
 << NOT FOUND: #CHROM 2 #POS 60343 #ID rs527639301 #REF G #ALT A #DONOR 0|0:0 >>
-<< NOT FOUND: #CHROM 20 #POS 60419 #ID rs538242240 #REF A #ALT G #DONOR 0|0:50 >>
+<< NOT FOUND: #CHROM 20 #POS 60418 #ID rs538242240 #REF A #ALT G #DONOR 0|0:0 >>
+<< NOT FOUND: #CHROM 20 #POS 60479 #ID rs149529990 #REF C #ALT T #DONOR 0|0:0 >>
+<< NOT FOUND: #CHROM 20 #POS 60522 #ID rs150241001 #REF A #ALT TC #DONOR 0|0:0 >>
+<< NOT FOUND: #CHROM 20 #POS 60568 #ID rs533509214 #REF A #ALT G #DONOR 0|0:0 >>
+<< NOT FOUND: #CHROM 20 #POS 60571 #ID rs116145529 #REF C #ALT A #DONOR 1|0:0 >>
+<< NOT FOUND: #CHROM 20 #POS 60579 #ID rs569863403 #REF G #ALT A #DONOR 0|0:15 >>
 
-Records Matched: 245, Records Processed: 247
-Value of Precision: 99.1903%
+Records Matched: 240, Records Processed: 247
+Value of Precision: 97.166%
 ```
+NOTE: The record row #264 is not different because it falls within the tolerance set. 
 
 ### Note
 - The tool has been tested only on 64bit Linux system.
