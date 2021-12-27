@@ -29,13 +29,13 @@ int tolerance = 0;
 int main(int argc, char *argv[]) {
     //We expect at least three arguments
     if (argc < 3) {
-        std::cerr << "<< MISSING ARGUMENTS >>" << std::endl;
+        std::cerr << "<< MISSING ARGUMENTS Mandatory: <output_malva.vcf> <sample.vcf> >>" << std::endl;
         return 1;
     }else if(argc == 3){
         //[0]Program Name, [1]Geno_path, [2]Sample_path
         compare_vcf(argv[1],argv[2]);
     }else if(argc == 4){
-        std::cerr << "<< MISSING ARGUMENTS >>" << std::endl;
+        std::cerr << "<< MISSING ARGUMENTS: -t [t_value] <output_malva.vcf> <sample.vcf> >>" << std::endl;
         return 1;
     }else if(argc == 5){ 
         //[0]Program Name, [1]Option, [2]Opt_Value, [3]Geno_path, [4]Sample_path
