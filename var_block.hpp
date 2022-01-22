@@ -197,7 +197,7 @@ public:
       bool continue_flag = false;
       for(const int &cov : v->coverages) {
         if(cov > max_cov) {
-          GT gt = make_pair(best_geno, 0);
+          GT gt = {best_geno, 0};
           v->add_genotype(gt);
           continue_flag = true;
           continue;
@@ -209,7 +209,7 @@ public:
       // The variant wasn't present in any sample: we have only the
       // coverage of the reference allele
       if (v->coverages.size() == 1) {
-        GT gt = make_pair(best_geno, 1);
+        GT gt = {best_geno, 1};
         v->add_genotype(gt);
         continue;
       }
@@ -217,7 +217,7 @@ public:
       // No allele of the variant is covered
       uint total_sum = accumulate(v->coverages.begin(), v->coverages.end(), 0);
       if(total_sum == 0) {
-	GT gt = make_pair(best_geno, 0);
+	      GT gt = {best_geno, 0};
         v->add_genotype(gt);
         continue;
       }
@@ -236,7 +236,8 @@ public:
 	  double prob = 0;
 	  if(!isinf(log_prob))
 	    prob = exp(log_prob);
-	  v->add_genotype(make_pair(to_string(g1), prob));
+    GT gen = {to_string(g1), prob};
+	  v->add_genotype(gen);
 	}
       } else {
 	for (uint g1 = 0; g1 < v->coverages.size(); ++g1) {
@@ -268,7 +269,8 @@ public:
 	    double prob = 0;
 	    if(!isinf(log_prob))
 	      prob = exp(log_prob);
-	    v->add_genotype(make_pair(to_string(g1) + "/" + to_string(g2), prob));
+      GT gen = {to_string(g1) + "/" + to_string(g2), prob};
+	    v->add_genotype(gen);
 	  }
         }
       }

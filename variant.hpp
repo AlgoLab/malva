@@ -28,7 +28,15 @@
 
 using namespace std;
 
-typedef pair<string, long double> GT;
+//typedef pair<string, long double> GT;
+typedef struct {
+  string first;
+  double second;
+} GT;
+typedef struct {
+  int first;
+  int second;
+} Geno;
 
 struct Variant {
   string seq_name;
@@ -39,7 +47,8 @@ struct Variant {
   float quality;                      // Quality field
   string filter;                      // Filter field
   string info;                        // Info field
-  vector<pair<int, int>> genotypes;   // full list of genotypes
+  //vector<pair<int, int>> genotypes;   // full list of genotypes
+  vector<Geno> genotypes;   // full list of genotypes
   vector<bool> phasing;               // true if genotype i-th is phased, false otherwise
   int ref_size;                       // Len of reference base{s}
   int min_size;                       // Length of the shortest string (ref and alts)
@@ -168,7 +177,8 @@ struct Variant {
       // FIXME: we store two alleles per sample even when we have an
       // haploid VCF. We manage haploid VCF in a special way in
       // var_block.hpp
-      genotypes.push_back(make_pair(all_1, all_2));
+      Geno gen = {all_1, all_2};
+      genotypes.push_back(gen);
       phasing.push_back(is_phased);
     }
     free(gt_arr);
