@@ -23,11 +23,11 @@
 #define _VAR_BLOCK_HPP_
 
 #include "variant.hpp"
+#include <map>
 
 using namespace std;
 
-// Maybe these maps can be translated into vectors
-typedef map<int, map<int, vector<vector<string>>>> VK_GROUP;
+typedef map<int, map<int, vector<vector<string>> >> VK_GROUP;
 
 /**
  * Extend a container with another
@@ -107,13 +107,13 @@ public:
 
             string kmer = mid_allele.substr(0, k);
             transform(kmer.begin(), kmer.end(), kmer.begin(), ::toupper);
-            ksss.push_back(kmer);
+            ksss.emplace_back(kmer);
 
             for (uint p = k; p < mid_allele.size(); ++p) {
               char c = toupper(mid_allele[p]);
               kmer.erase(0, 1);
               kmer += c;
-              ksss.push_back(kmer);
+              ksss.emplace_back(kmer);
             }
           } else {
             string kmer = "";
@@ -162,7 +162,7 @@ public:
                          abs(missing_suffix));
             transform(kmer.begin(), kmer.end(), kmer.begin(), ::toupper);
 
-            ksss.push_back(kmer);
+            ksss.emplace_back(kmer);
           }
 
           // add ksss (to _kmers)
@@ -171,7 +171,7 @@ public:
             _kmers[allele_index].push_back(ksss);
           } else {
             vector<vector<string>> tmp_kmers;
-            tmp_kmers.push_back(ksss);
+            tmp_kmers.emplace_back(ksss);
             _kmers[allele_index] = tmp_kmers;
           }
         }
@@ -390,8 +390,8 @@ private: // methods
       if (right_combs.empty()) { // first var to be added
         if (are_near(*mid_v, *curr_v, k)) {
           vector<int> new_comb(1, (int)j);
-          right_combs.push_back(new_comb);
-          right_sums.push_back(curr_v->ref_size - curr_v->min_size);
+          right_combs.emplace_back(new_comb);
+          right_sums.emplace_back(curr_v->ref_size - curr_v->min_size);
         }
       } else {
 	// add the var to all the compatible combinations
@@ -405,7 +405,7 @@ private: // methods
 	  if (!are_overlapping(*last_v_in_comb, *curr_v)) {
 	    added_flag = true;
 	    if (are_near(*mid_v, *curr_v, k, sum)) {
-	      right_combs[c].push_back(j);
+	      right_combs[c].emplace_back(j);
 	      right_sums[c] += curr_v->ref_size - curr_v->min_size;
 	    }
 	  }
@@ -427,11 +427,11 @@ private: // methods
 	      new_sum -= last_v_in_comb->ref_size - last_v_in_comb->min_size;
 	      last_v_in_comb = &variants[new_comb.back()];
 	    }
-	    new_comb.push_back(j);
+	    new_comb.emplace_back(j);
 	    if (are_near(*mid_v, *curr_v, k, new_sum)) {
 	      added_flag = true;
-	      new_right_combs.push_back(new_comb);
-	      new_right_sums.push_back(new_sum + curr_v->ref_size -
+	      new_right_combs.emplace_back(new_comb);
+	      new_right_sums.emplace_back(new_sum + curr_v->ref_size -
 				       curr_v->min_size);
 	    }
 	  }
@@ -476,8 +476,8 @@ private: // methods
       if (left_combs.empty()) { // first var to be added
         if (are_near(*curr_v, *mid_v, k)) {
           vector<int> new_comb(1, (int)j);
-          left_combs.push_back(new_comb);
-          left_sums.push_back(curr_v->ref_size - curr_v->min_size);
+          left_combs.emplace_back(new_comb);
+          left_sums.emplace_back(curr_v->ref_size - curr_v->min_size);
         }
       } else {
 	// add the var to all the compatible combinations
@@ -491,7 +491,7 @@ private: // methods
 	  if (!are_overlapping(*curr_v, *last_v_in_comb)) {
 	    added_flag = true;
 	    if (are_near(*curr_v, *mid_v, k, sum)) {
-	      left_combs[c].push_back(j);
+	      left_combs[c].emplace_back(j);
 	      left_sums[c] += curr_v->ref_size - curr_v->min_size;
 	    }
 	  }
@@ -507,17 +507,17 @@ private: // methods
 
 	    Variant *last_v_in_comb = &variants[new_comb.back()];
 
-	    while (are_overlapping(*curr_v, *last_v_in_comb) and
+	    while (are_overlapping(*curr_v, *last_v_in_comb) &&
 		   !new_comb.empty()) {
 	      new_comb.pop_back();
 	      new_sum -= last_v_in_comb->ref_size - last_v_in_comb->min_size;
 	      last_v_in_comb = &variants[new_comb.back()];
 	    }
-	    new_comb.push_back(j);
+	    new_comb.emplace_back(j);
 	    if (are_near(*curr_v, *mid_v, k, new_sum)) {
 	      added_flag = true;
-	      new_left_combs.push_back(new_comb);
-	      new_left_sums.push_back(new_sum + curr_v->ref_size -
+	      new_left_combs.emplace_back(new_comb);
+	      new_left_sums.emplace_back(new_sum + curr_v->ref_size -
 				      curr_v->min_size);
 	    }
 	  }
@@ -547,29 +547,30 @@ private: // methods
     vector<vector<int>> full_combs;
     if (left_combs.empty() && right_combs.empty()) {
       vector<int> comb;
-      comb.push_back(i);
-      full_combs.push_back(comb);
+      comb.emplace_back(i);
+      full_combs.emplace_back(comb);
     } else if (left_combs.empty()) {
       vector<int> lcomb;
-      lcomb.push_back(i);
+      lcomb.emplace_back(i);
       vector<int> comb = lcomb;
       for (const vector<int> &rcomb : right_combs) {
         extend(comb, rcomb);
-        full_combs.push_back(comb);
+        full_combs.emplace_back(comb);
         comb = lcomb;
       }
     } else {
       for (vector<int> &lcomb : left_combs) {
         reverse(lcomb.begin(), lcomb.end());
-        lcomb.push_back(i);
+        lcomb.emplace_back(i);
         vector<int> comb = lcomb;
         if (right_combs.empty()) {
-          full_combs.push_back(comb);
-        }
-        for (const vector<int> &rcomb : right_combs) {
-          extend(comb, rcomb);
-          full_combs.push_back(comb);
-          comb = lcomb;
+          full_combs.emplace_back(comb);
+        }else {
+          for (const vector<int> &rcomb : right_combs) {
+            extend(comb, rcomb);
+            full_combs.emplace_back(comb);
+            comb = lcomb;
+          }
         }
       }
     }
@@ -592,7 +593,7 @@ private: // methods
       string ref_sub (reference,
                            last_end,
                            v->ref_pos - last_end);
-      ref_subs.push_back(ref_sub);
+      ref_subs.emplace_back(ref_sub);
       last_end = v->ref_pos + v->ref_size;
     }
     return ref_subs;
@@ -639,9 +640,9 @@ private: // methods
       vector<string> hap2;
       for (const int &j : comb) {
 	phased_combination &= variants[j].phasing[gt_i];
-        hap1.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].first));
+        hap1.emplace_back(variants[j].get_allele(variants[j].genotypes[gt_i].first));
 	if(!haploid)
-	  hap2.push_back(variants[j].get_allele(variants[j].genotypes[gt_i].second));
+	  hap2.emplace_back(variants[j].get_allele(variants[j].genotypes[gt_i].second));
       }
 
       if(haploid)

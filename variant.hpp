@@ -28,7 +28,6 @@
 
 using namespace std;
 
-//typedef pair<string, long double> GT;
 typedef struct {
   string first;
   double second;
@@ -47,7 +46,6 @@ struct Variant {
   float quality;                      // Quality field
   string filter;                      // Filter field
   string info;                        // Info field
-  //vector<pair<int, int>> genotypes;   // full list of genotypes
   vector<Geno> genotypes;   // full list of genotypes
   vector<bool> phasing;               // true if genotype i-th is phased, false otherwise
   int ref_size;                       // Len of reference base{s}
@@ -75,7 +73,7 @@ struct Variant {
     for (int i = 1; i < vcf_record->n_allele; ++i) {
       char *curr_alt = vcf_record->d.allele[i];
       if (curr_alt[0] != '<')
-        alts.push_back(string(curr_alt));
+        alts.emplace_back(string(curr_alt));
     }
     coverages.resize(alts.size() + 1, 0); // +1 for the reference allele
     quality = vcf_record->qual;
@@ -118,10 +116,10 @@ struct Variant {
                        &altall_freqs, &ndst);
 
     if(!uniform) {
-      frequencies.push_back(0); // First element is reserved for reference allele
+      frequencies.emplace_back(0); // First element is reserved for reference allele
       for (uint i = 0; i < alts.size(); ++i) {
 	float *freq = altall_freqs + i;
-	frequencies.push_back(freq[0]);
+	frequencies.emplace_back(freq[0]);
       }
       // Here we compute the frequency of the reference allele
       frequencies[0] = 1.0 - accumulate(frequencies.begin(), frequencies.end(), 0.0);
@@ -130,7 +128,7 @@ struct Variant {
     } else {
       float uniform_freq = 1.0/(alts.size()+1);
       for (uint i = 0; i<alts.size()+1; ++i)
-	frequencies.push_back(uniform_freq);
+	frequencies.emplace_back(uniform_freq);
     }
 
     if (frequencies[0] == 1.0)
@@ -178,8 +176,8 @@ struct Variant {
       // haploid VCF. We manage haploid VCF in a special way in
       // var_block.hpp
       Geno gen = {all_1, all_2};
-      genotypes.push_back(gen);
-      phasing.push_back(is_phased);
+      genotypes.emplace_back(gen);
+      phasing.emplace_back(is_phased);
     }
     free(gt_arr);
   }
@@ -217,7 +215,7 @@ struct Variant {
 
   void add_genotype(const GT &gt) {
     // maybe we can add some control here
-    computed_gts.push_back(gt);
+    computed_gts.emplace_back(gt);
   }
 };
 

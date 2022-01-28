@@ -25,7 +25,7 @@
 #include <iostream>
 #include <utility>
 
-#include <unordered_map>
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -90,7 +90,7 @@ void pelapsed(const string &s = "", const bool rollback = false) {
   //CALCULATE EXECUTION TIME
   chrono::duration<double> old_now_t =  chrono::high_resolution_clock::now() - *last_t;
   //PRINT EXECUTION TIME
-  cerr << "[malva-geno/" << s << "] Execution Time " << setprecision(3) << old_now_t.count() << "s" << endl;
+  cerr << "[malva-geno/" << s << "] Execution Time " << setprecision(4) << old_now_t.count() << "s" << endl;
   
   //CALCULATE DIFF FOR TIME ELAPSED
   now_t = chrono::high_resolution_clock::now();
@@ -98,7 +98,7 @@ void pelapsed(const string &s = "", const bool rollback = false) {
   //SAVE LAST PHASE TIME
   last_t = &now_t; //maybe redundant run it every time
   //PRINT TIME ELAPSED
-  cerr << "[malva-geno/" << s << "] Time elapsed " << setprecision(3) << diff.count() << "s" << endl;
+  cerr << "[malva-geno/" << s << "] Time elapsed " << setprecision(4) << diff.count() << "s" << endl;
   //PRINT CPU TIME ELAPSED
   cerr << "[malva-geno/" << s << "] Used CPU-time elapsed " << get_cpu_time() - cpu_start << "s" << endl;    
   //PRINT MAX MEMORY USAGE
@@ -187,8 +187,8 @@ void print_cleaned_header(bcf_hdr_t *vcf_header, const bool verbose) {
   // Adding donor sample and removing all other samples
   const char *new_sample = "DONOR";
   bcf_hdr_add_sample(vcf_header, new_sample);
-  bcf_hdr_sync(vcf_header);
-  bcf_hdr_set_samples(vcf_header, new_sample, 0);
+  if(bcf_hdr_sync(vcf_header) != 0) cerr << "sync sample error" << endl;
+  if(bcf_hdr_set_samples(vcf_header, new_sample, 0) != 0) cerr << "set sample error" << endl;
 
   // Formatting and printing header
   kstring_t htxt = {0, 0, 0};
@@ -255,7 +255,7 @@ int index_main(int argc, char*argv[]) {
 
   // References are stored in a map
   pelapsed("Reference parsing");
-  unordered_map<string, string> refs;
+  map<string, string> refs;
   int l;
   while ((l = kseq_read(reference)) >= 0) {
     string id = reference->name.s;
@@ -290,7 +290,7 @@ int index_main(int argc, char*argv[]) {
     // In the first iteration, we set last_seq_name
     if(last_seq_name.size() == 0) {
       last_seq_name = v.seq_name;
-      used_seq_names.push_back(last_seq_name);
+      used_seq_names.emplace_back(last_seq_name);
     }
 
     // We do not consider variants with <CN> or not present in
@@ -315,7 +315,7 @@ int index_main(int argc, char*argv[]) {
       vb.clear();
       if(last_seq_name != v.seq_name) {
         last_seq_name = v.seq_name;
-        used_seq_names.push_back(last_seq_name);
+        used_seq_names.emplace_back(last_seq_name);
       }
     }
     vb.add_variant(v);
@@ -417,7 +417,7 @@ int call_main(int argc, char *argv[]) {
 
   // References are stored in a map
   pelapsed("Reference parsing");
-  unordered_map<string, string> refs;
+  map<string, string> refs;
   int l;
   while ((l = kseq_read(reference)) >= 0) {
     string id = reference->name.s;
