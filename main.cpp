@@ -279,9 +279,12 @@ int index_main(int argc, char*argv[]) {
 
   int i = 0;
   while (bcf_read(vcf, vcf_header, vcf_record) == 0) {
+
     bcf_unpack(vcf_record, BCF_UN_STR);
+
     Variant v(vcf_header, vcf_record, opt::freq_key, opt::uniform);
     ++i;
+
     if(i%5000 == 0) {
       string log_line = "Processed " + to_string(i) + " variants";
       pelapsed(log_line, true);
@@ -365,6 +368,7 @@ int index_main(int argc, char*argv[]) {
 
   context_bf.switch_mode();
 
+  pelapsed("Saving index data");
   ofstream index_stream(opt::vcf_path + ".c" + to_string(opt::ref_k) + ".k" + to_string(opt::k) + MALVA_IDX_SUFFIX);
 
   context_bf >> index_stream;
@@ -374,6 +378,8 @@ int index_main(int argc, char*argv[]) {
   kseq_destroy(reference);
   gzclose(fasta_in);
   cout.flush();
+  pelapsed("Saving index data complete");
+
   return 0;
 }
 
