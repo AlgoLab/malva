@@ -45,6 +45,8 @@
 #include "var_block.hpp"
 #include "kmap.hpp"
 
+#include "zstdstream.h"
+
 using namespace std;
 
 long get_mem_usage(); //declare mem method
@@ -368,8 +370,7 @@ int index_main(int argc, char*argv[]) {
 
   context_bf.switch_mode();
 
-  pelapsed("Saving index data");
-  ofstream index_stream(opt::vcf_path + ".c" + to_string(opt::ref_k) + ".k" + to_string(opt::k) + MALVA_IDX_SUFFIX);
+  zstd::ofstream index_stream(opt::vcf_path + ".c" + to_string(opt::ref_k) + ".k" + to_string(opt::k) + MALVA_IDX_SUFFIX + ".zst");
 
   context_bf >> index_stream;
   bf >> index_stream;
@@ -378,7 +379,6 @@ int index_main(int argc, char*argv[]) {
   kseq_destroy(reference);
   gzclose(fasta_in);
   cout.flush();
-  pelapsed("Saving index data complete");
 
   return 0;
 }
@@ -413,8 +413,9 @@ int call_main(int argc, char *argv[]) {
   BF bf;
   KMAP ref_bf;
   BF context_bf;
+
   {
-    ifstream index_stream(opt::vcf_path + ".c" + to_string(opt::ref_k) + ".k" + to_string(opt::k) + MALVA_IDX_SUFFIX);
+    zstd::ifstream index_stream(opt::vcf_path + ".c" + to_string(opt::ref_k) + ".k" + to_string(opt::k) + MALVA_IDX_SUFFIX + ".zst");
 
     context_bf << index_stream;
     bf << index_stream;
@@ -537,7 +538,6 @@ int call_main(int argc, char *argv[]) {
 
   kseq_destroy(reference);
   gzclose(fasta_in);
-
   cout.flush();
 
   pelapsed("Execution completed");

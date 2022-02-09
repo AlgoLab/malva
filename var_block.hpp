@@ -36,7 +36,7 @@ struct VectorHash { //custom hash function for unordered_set
         hash<string> hasher;
         size_t fingerprint = 0;
         for (string i : v) {
-            fingerprint ^= hasher(i) + 0x9e3779b9 + (fingerprint<<6) + (fingerprint>>2);
+          fingerprint ^= hasher(i) + 0x9e3779b9 + (fingerprint<<6) + (fingerprint>>2);
         }
         return fingerprint;
     }

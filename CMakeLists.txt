@@ -2,19 +2,16 @@ cmake_minimum_required(VERSION 3.10)
 
 project(MALVA VERSION 1.3.1)
 
-file(GLOB SOURCES *.cpp)
-
-add_executable(malva-geno ${SOURCES})
+add_executable(malva-geno zstdstream.cpp MurmurHash3.cpp main.cpp)
 
 set_target_properties(malva-geno
     PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
 )
 
-find_package(OpenMP)
 find_package(ZLIB)
 
-find_library(SDSL sdsl REQUIRED)
+find_library(SDSL libsdsl.a REQUIRED)
 if (NOT SDSL)
     message(FATAL_ERROR "sdsl-lite (libsdsl-dev) required")
 else ()
@@ -41,20 +38,22 @@ else ()
     message(STATUS "HTSLIB found ${HTSLIB}")
 endif ()
 
+find_library(ZSTD libzstd.a REQUIRED)
+if (NOT ZSTD)
+    message(FATAL_ERROR "ZSTD (libzstd-dev) required")
+else ()
+    message(STATUS "ZSTD found ${ZSTD}")
+endif ()
+
 target_include_directories(malva-geno
        PRIVATE ${PROJECT_SOURCE_DIR}
        PRIVATE ${KMC_INCLUDE_DIR}
 )
 
 target_link_libraries(malva-geno
-        PUBLIC sdsl
-        PUBLIC divsufsort
-        PUBLIC divsufsort64
+        PUBLIC ${SDSL}
         PUBLIC kmc
         PUBLIC hts
         PUBLIC z
-        PRIVATE OpenMP::OpenMP_CXX)
-
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
-SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
-SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
+        PUBLIC ${ZSTD}
+        PUBLIC pthread)
