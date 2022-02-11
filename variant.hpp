@@ -25,6 +25,7 @@
 #include <numeric>
 #include <string>
 #include <vector>
+#include <string_view>
 
 using namespace std;
 
@@ -185,18 +186,18 @@ struct Variant {
   /**
    * Return the i-th allele, 0 is the reference
    **/
-  string get_allele(const int &i) const {
+  string_view get_allele(const int &i) const {
     if (i == 0)
-      return ref_sub;
+      return string_view(ref_sub);
     else
-      return alts[i - 1];
+      return string_view(alts[i - 1]);
   }
 
   /**
    * Given an allele, return its position in the list (1-based since 0 is the
    *reference)
    **/
-  int get_allele_index(const string &a) const {
+  int get_allele_index(const string_view &a) const {
     if(ref_sub.compare(a) == 0)
       return 0;
     int i = 1;

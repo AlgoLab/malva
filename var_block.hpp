@@ -26,16 +26,17 @@
 #include <map>
 #include <unordered_set>
 #include <functional> //for std::hash
+#include <string_view>
 
 using namespace std;
 
 typedef map<int, map<int, vector<vector<string>> >> VK_GROUP;
 
 struct VectorHash { //custom hash function for unordered_set
-    size_t operator()(const vector<string>& v) const {
-        hash<string> hasher;
+    size_t operator()(const vector<string_view>& v) const {
+        hash<string_view> hasher;
         size_t fingerprint = 0;
-        for (string i : v) {
+        for (string_view i : v) {
           fingerprint ^= hasher(i) + 0x9e3779b9 + (fingerprint<<6) + (fingerprint>>2);
         }
         return fingerprint;
@@ -105,15 +106,15 @@ public:
 
       for (const vector<int> &comb : combs) {
         vector<string> ref_subs = get_ref_subs(comb, reference);
-        unordered_set<vector<string>, VectorHash> alt_allele_combs = build_alleles_combs(comb, v_index, haploid);
+        unordered_set<vector<string_view>, VectorHash> alt_allele_combs = build_alleles_combs(comb, v_index, haploid);
 
-        for (const vector<string> aac : alt_allele_combs) {
+        for (const vector<string_view> aac : alt_allele_combs) {
           vector<string> ksss; // kmers sequences
-          string mid_allele;
+          string_view mid_allele;
           if (aac.size() == 1 && aac[0].size() >= (uint)k) {
             mid_allele = aac[0];
 
-            string kmer = mid_allele.substr(0, k);
+            string kmer(mid_allele, 0, k);
             transform(kmer.begin(), kmer.end(), kmer.begin(), ::toupper);
             ksss.emplace_back(kmer);
 
@@ -139,7 +140,7 @@ public:
                 mid_pos_in_kmer = kmer.size();
                 mid_allele = aac[j];
               }
-              kmer += aac[j] + rs;
+              kmer += aac[j]; kmer += rs;
             }
 
             // get how much we must extend or cut
@@ -612,14 +613,14 @@ private: // methods
    * (used when gt information is unphased). Example: given 0/1, 1/3,
    * 1/1, I want: 0,1,1; 0,3,1; 1,1,1; 1,3,1 (with repetitions).
    **/
-  vector<vector<string>> combine_haplotypes(vector<string> hap1,
-					      vector<string> hap2) {
+  vector<vector<string_view>> combine_haplotypes(vector<string_view> hap1,
+					      vector<string_view> hap2) {
     int n = hap1.size(); // number of alleles in each haplotype
     int N = pow(2, n-1); // number of possible haplotypes
-    vector<vector<string>> HAPs (2*N, vector<string>(n));
+    vector<vector<string_view>> HAPs (2*N, vector<string_view>(n));
 
     for(int level=0; level<n; ++level) {
-      vector<string> alleles ({hap1[level], hap2[level]});
+      vector<string_view> alleles ({hap1[level], hap2[level]});
       int rep = pow(2, n-1-level);
 
       for(int col=0; col<N; ++col) {
@@ -634,25 +635,23 @@ private: // methods
    * Builds and returns all the possible combination of alleles (haplotypes),
    * with respect to GTs.
    **/
-  unordered_set<vector<string>, VectorHash>
+  unordered_set<vector<string_view>, VectorHash>
   build_alleles_combs(const vector<int> &comb,
 		      const int &central_index,
 		      const bool haploid) {
     // A set to avoid duplicate elements
-    unordered_set<vector<string>, VectorHash> aacs;
+    unordered_set<vector<string_view>, VectorHash> aacs;
     Variant *central_v = &variants[central_index];
     // For each individual having this variant
     for (int gt_i = 0; gt_i<(int)central_v->genotypes.size(); ++gt_i) {
       bool phased_combination = true;
-      vector<string> hap1;
-      vector<string> hap2;
+      vector<string_view> hap1;
+      vector<string_view> hap2;
       for (const int &j : comb) {
 	      phased_combination &= variants[j].phasing[gt_i];
-        string hap1_tmp = variants[j].get_allele(variants[j].genotypes[gt_i].first);
-        hap1.emplace_back(hap1_tmp);
+        hap1.emplace_back(variants[j].get_allele(variants[j].genotypes[gt_i].first));
 	      if(!haploid){
-          string hap2_tmp = variants[j].get_allele(variants[j].genotypes[gt_i].second);
-	        hap2.emplace_back(hap2_tmp);
+	        hap2.emplace_back(variants[j].get_allele(variants[j].genotypes[gt_i].second));
         }
       }
 
@@ -664,8 +663,8 @@ private: // methods
 	        aacs.insert(hap1);
 	        aacs.insert(hap2);
 	      } else {
-	        vector<vector<string>> all_haplotypes = combine_haplotypes(hap1, hap2);
-	        for(const auto hap : all_haplotypes) {
+	        vector<vector<string_view>> all_haplotypes = combine_haplotypes(hap1, hap2);
+	        for(vector<string_view> hap : all_haplotypes) {
 	          aacs.insert(hap);
 	        }
 	      }

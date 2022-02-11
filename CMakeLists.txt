@@ -9,6 +9,9 @@ set_target_properties(malva-geno
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
 )
 
+#add c++ 17
+set_property(TARGET malva-geno PROPERTY CXX_STANDARD 17)
+
 find_package(ZLIB)
 
 find_library(SDSL libsdsl.a REQUIRED)

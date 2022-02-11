@@ -28,6 +28,7 @@ To manually compile MALVA you'll need the following libraries and tools installe
 * MurmurHash3 (already included) under MIT license
 * zlib
 * cmake
+* compiler >= c++17
 
 Use your favorite system-wide package manager to install them before compiling MALVA.
 
