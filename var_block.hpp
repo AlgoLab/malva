@@ -25,8 +25,8 @@
 #include "variant.hpp"
 #include <map>
 #include <unordered_set>
-#include <functional> //for std::hash
 #include <string_view>
+#include "xxhash.h"
 
 using namespace std;
 
@@ -34,12 +34,11 @@ typedef map<int, map<int, vector<vector<string>> >> VK_GROUP;
 
 struct VectorHash { //custom hash function for unordered_set
     size_t operator()(const vector<string_view>& v) const {
-        hash<string_view> hasher;
-        size_t fingerprint = 0;
-        for (string_view i : v) {
-          fingerprint ^= hasher(i) + 0x9e3779b9 + (fingerprint<<6) + (fingerprint>>2);
-        }
-        return fingerprint;
+      size_t hash = 0;
+      for (string_view i : v) {
+        hash ^= XXH3_64bits(i.data(), i.size()) + 0x9e3779b9 + (hash<<6) + (hash>>2);
+      }
+      return hash;
     }
 };
 

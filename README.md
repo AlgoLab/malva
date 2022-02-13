@@ -25,7 +25,7 @@ To manually compile MALVA you'll need the following libraries and tools installe
 * [htslib >= v1.10.2](https://github.com/samtools/htslib/tree/1.10.2) under License [MIT/Expat](https://github.com/samtools/htslib/blob/develop/LICENSE)
 * [zstd >= 1.5.1](https://github.com/facebook/zstd) under License [BSD](https://github.com/facebook/zstd/blob/dev/LICENSE) and [GPLv2](https://github.com/facebook/zstd/blob/dev/COPYING)
 * zstdstream (already included) under [MIT](https://github.com/TorchCraft/TorchCraftAI/blob/main/LICENSE) license
-* MurmurHash3 (already included) under MIT license
+* xxHash (already included) under BSD license
 * zlib
 * cmake
 * compiler >= c++17

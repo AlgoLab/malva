@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 
 project(MALVA VERSION 1.3.1)
 
-add_executable(malva-geno zstdstream.cpp MurmurHash3.cpp main.cpp)
+add_executable(malva-geno zstdstream.cpp xxhash.c main.cpp)
 
 set_target_properties(malva-geno
     PROPERTIES
