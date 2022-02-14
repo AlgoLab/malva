@@ -43,46 +43,48 @@ using namespace std;
 //     0,   0,   0, 0,   0,   0,   0,   0              // 120
 // };
 
-struct KMAP {
+struct KMAP
+{
   unordered_map<string, int> kmers;
 
   KMAP() {}
 
-  ostream& operator>>(ostream& stream)
+  ostream &operator>>(ostream &stream)
   {
     size_t size = kmers.size();
-    stream.write(reinterpret_cast<const char*>(&size), sizeof(size_t));
-    for (const auto& pair : kmers)
-      {
-	string::size_type l = pair.first.length();
-	stream.write(reinterpret_cast<const char*>(&l), sizeof(string::size_type));
-	stream.write(reinterpret_cast<const char*>((char*) pair.first.data()), l);
-	stream.write(reinterpret_cast<const char*>(&pair.second), sizeof(int));
-      }
+    stream.write(reinterpret_cast<const char *>(&size), sizeof(size_t));
+    for (const auto &pair : kmers)
+    {
+      string::size_type l = pair.first.length();
+      stream.write(reinterpret_cast<const char *>(&l), sizeof(string::size_type));
+      stream.write(reinterpret_cast<const char *>((char *)pair.first.data()), l);
+      stream.write(reinterpret_cast<const char *>(&pair.second), sizeof(int));
+    }
     return stream;
   }
 
-  istream& operator<<(istream& stream)
+  istream &operator<<(istream &stream)
   {
     size_t size;
-    stream.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+    stream.read(reinterpret_cast<char *>(&size), sizeof(size_t));
     for (size_t i = 0; i < size; ++i)
-      {
-	string::size_type l;
-	string k;
-	int v;
-	stream.read(reinterpret_cast<char*>(&l), sizeof(string::size_type));
-	k.resize(l);
-	stream.read(reinterpret_cast<char*>((char*) k.data()), l);
-	stream.read(reinterpret_cast<char*>(&v), sizeof(int));
-	kmers[k] = v;
-      }
+    {
+      string::size_type l;
+      string k;
+      int v;
+      stream.read(reinterpret_cast<char *>(&l), sizeof(string::size_type));
+      k.resize(l);
+      stream.read(reinterpret_cast<char *>((char *)k.data()), l);
+      stream.read(reinterpret_cast<char *>(&v), sizeof(int));
+      kmers[k] = v;
+    }
     return stream;
   }
 
   static const char _compl(const char &c) { return RCN[c]; }
 
-  string canonical(const char* kmer) {
+  string canonical(const char *kmer)
+  {
     uint k = strlen(kmer);
     char ckmer[k + 1];
     strcpy(ckmer, kmer);
@@ -90,34 +92,39 @@ struct KMAP {
     reverse(ckmer, ckmer + k);
     if (strcmp(kmer, ckmer) < 0)
       memmove(ckmer, kmer, k);
-    string kmer_string (ckmer);
+    string kmer_string(ckmer);
     return kmer_string;
   }
 
-  bool test_key(const char* kmer) {
+  bool test_key(const char *kmer)
+  {
     string ckmer = canonical(kmer);
-    if(kmers.find(ckmer) == kmers.end())
+    if (kmers.find(ckmer) == kmers.end())
       return false;
     else
       return true;
   }
 
-  void add_key(const char* kmer) {
+  void add_key(const char *kmer)
+  {
     string ckmer = canonical(kmer);
     kmers[ckmer] = 0;
   }
 
-  void increment(const char* kmer, int counter) {
+  void increment(const char *kmer, int counter)
+  {
     string ckmer = canonical(kmer);
-    if(kmers.find(ckmer) != kmers.end()) {
+    if (kmers.find(ckmer) != kmers.end())
+    {
       uint32 new_value = kmers[ckmer] + counter;
       kmers[ckmer] = new_value;
     }
   }
 
-  int get_count(const char* kmer) {
+  int get_count(const char *kmer)
+  {
     string ckmer = canonical(kmer);
-    if(kmers.find(ckmer) != kmers.end())
+    if (kmers.find(ckmer) != kmers.end())
       return kmers[ckmer];
     else
       return 0;

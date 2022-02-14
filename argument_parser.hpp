@@ -29,42 +29,41 @@
 using namespace std;
 
 static const char *USAGE_MESSAGE =
-  "Usage: malva-geno [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] "
-  "<reference.fa> <variants.vcf> <kmc_output_prefix>\n"
-  "\n"
-  "Top notch description of this tool\n"
-  "\n"
-  "      -h, --help                        display this help and exit\n"
-  "      -k, --kmer-size                   size of the kmers to index (default:35)\n"
-  "      -r, --ref-kmer-size               size of the reference kmers to index (default:43)\n"
-  "      -e, --error-rate                  expected sample error rate (default:0.001)\n"
-  "      -s, --samples                     file containing the list of (VCF) samples to consider (default:-, i.e. all samples)\n"
-  "      -f, --freq-key                    a priori frequency key in the INFO column of the input VCF (default:AF)\n"
-  "      -c, --max-coverage                maximum coverage for variant alleles (default:200)\n"
-  "      -b, --bf-size                     bloom filter size in GB (default:4)\n"
-  "      -p, --strip-chr                   strip \"chr\" from sequence names (default:false)\n"
-  "      -u, --uniform                     use uniform a priori probabilities (default:false)\n"
-  "      -v, --verbose                     output COVS and GTS in INFO column (default: false)\n"
-  "      -1, --haploid                     run MALVA in haploid mode (default: false)\n"
-  // "      -t, --threads                     number of threads (default: 1)\n"
-  "\n";
+    "Usage: malva-geno [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] "
+    "<reference.fa> <variants.vcf> <kmc_output_prefix>\n"
+    "\n"
+    "Top notch description of this tool\n"
+    "\n"
+    "      -h, --help                        display this help and exit\n"
+    "      -k, --kmer-size                   size of the kmers to index (default:35)\n"
+    "      -r, --ref-kmer-size               size of the reference kmers to index (default:43)\n"
+    "      -e, --error-rate                  expected sample error rate (default:0.001)\n"
+    "      -s, --samples                     file containing the list of (VCF) samples to consider (default:-, i.e. all samples)\n"
+    "      -f, --freq-key                    a priori frequency key in the INFO column of the input VCF (default:AF)\n"
+    "      -c, --max-coverage                maximum coverage for variant alleles (default:200)\n"
+    "      -b, --bf-size                     bloom filter size in GB (default:4)\n"
+    "      -p, --strip-chr                   strip \"chr\" from sequence names (default:false)\n"
+    "      -u, --uniform                     use uniform a priori probabilities (default:false)\n"
+    "      -v, --verbose                     output COVS and GTS in INFO column (default: false)\n"
+    "      -1, --haploid                     run MALVA in haploid mode (default: false)\n"
+    "\n";
 
-namespace opt {
-static uint k = 35;
-static uint ref_k = 43;
-static float error_rate = 0.001;
-static string samples = "-";
-static string freq_key = "AF";
-static uint max_coverage = 200;
-static uint64_t bf_size = ((uint64_t)0b1 << 35);
-static bool strip_chr = false;
-static bool uniform = false;
-static bool verbose = false;
-static bool haploid = false;
-// static size_t nThreads = 1;
-static string fasta_path;
-static string vcf_path;
-static string kmc_sample_path;
+namespace opt
+{
+  static uint k = 35;
+  static uint ref_k = 43;
+  static float error_rate = 0.001;
+  static string samples = "-";
+  static string freq_key = "AF";
+  static uint max_coverage = 200;
+  static uint64_t bf_size = ((uint64_t)0b1 << 35);
+  static bool strip_chr = false;
+  static bool uniform = false;
+  static bool verbose = false;
+  static bool haploid = false;
+  static string fasta_path;
+  static string vcf_path;
+  static string kmc_sample_path;
 }
 
 static const char *shortopts = "k:r:e:s:f:c:b:hpuv1";
@@ -81,16 +80,18 @@ static const struct option longopts[] = {
     {"uniform", required_argument, NULL, 'u'},
     {"verbose", no_argument, NULL, 'v'},
     {"haplod", no_argument, NULL, '1'},
-    // {"threads", no_argument, NULL, 't'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}};
 
-void parse_arguments(int argc, char **argv) {
+void parse_arguments(int argc, char **argv)
+{
   bool die = false;
   for (char c;
-       (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) {
+       (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;)
+  {
     istringstream arg(optarg != NULL ? optarg : "");
-    switch (c) {
+    switch (c)
+    {
     case 'p':
       opt::strip_chr = true;
       break;
@@ -126,9 +127,6 @@ void parse_arguments(int argc, char **argv) {
     case '1':
       opt::haploid = true;
       break;
-    // case 't':
-    //   arg >> opt::nThreads;
-    //   break;
     case '?':
       die = true;
       break;
@@ -138,15 +136,20 @@ void parse_arguments(int argc, char **argv) {
     }
   }
 
-  if (argc - optind < 3) {
+  if (argc - optind < 3)
+  {
     cerr << "malva : missing arguments\n";
     die = true;
-  } else if (argc - optind > 3) {
+  }
+  else if (argc - optind > 3)
+  {
     cerr << "malva : too many arguments\n";
     die = true;
   }
-  if (die) {
-    cerr << "\n" << USAGE_MESSAGE;
+  if (die)
+  {
+    cerr << "\n"
+         << USAGE_MESSAGE;
     exit(EXIT_FAILURE);
   }
 

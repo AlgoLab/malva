@@ -53,5 +53,7 @@ auto/
 build/
 example
 include
-lib
 .idea
+.vscode/c_cpp_properties.json
+.vscode/settings.json
+malva_test/malva-test
