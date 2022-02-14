@@ -57,3 +57,4 @@ include
 .vscode/c_cpp_properties.json
 .vscode/settings.json
 malva_test/malva-test
+.gitmodules
