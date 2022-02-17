@@ -5,7 +5,6 @@
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Estimated allele frequency in the range (0,1)">
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	DONOR
-1	15	.	T	C	.	PASS	.	GT:GQ	0:0
 1	569	.	T	C	.	PASS	.	GT:GQ	0:0
 1	582	.	G	A	.	PASS	.	GT:GQ	0:0
 1	618	.	G	A	.	PASS	.	GT:GQ	0:0

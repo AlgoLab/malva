@@ -2,8 +2,8 @@
 
 SCRIPT_NAME=$(basename $0)
 BIN_NAME="malva-geno"
-EXECUTABLE="$(dirname $0)/${BIN_NAME}"
-KMC_BIN="$(dirname $0)/KMC/bin/kmc"
+EXECUTABLE="$(dirname $0)/bin/${BIN_NAME}"
+KMC_BIN="kmc"
 
 DEFAULT_KSIZE=35
 DEFAULT_REF_KSIZE=43

@@ -139,7 +139,7 @@ mkdir -p kmc_tmp
 
 This should take less than 1 minute to complete. You can also verify
 the correcteness of the output VCF `chr20.genotyped.vcf` by comparing
-it with [chr20.malva.vcf](https://github.com/AlgoLab/malva/blob/master/example/chr20.malva.vcf).
+it with `chr20.malva.vcf`.
 For a quick comparison look [MALVA-TEST](https://github.com/Bunco3/malva/tree/path_to_version_2_0/malva_test): Workflow for testing MALVA Output.
 
 ## Haploid mode - Example
@@ -149,6 +149,10 @@ cd example
 tar xvfz haploid.tar.gz
 ../MALVA -1 -k 35 -r 43 -b 1 -f AF haploid.fa haploid.vcf haploid.fq > haploid.genotyped.vcf
 ```
+This should take less than 1 minute to complete. You can also verify
+the correcteness of the output VCF `haploid.genotyped.vcf` by comparing
+it with `haploid.malva.vcf`.
+For a quick comparison look [MALVA-TEST](https://github.com/Bunco3/malva/tree/path_to_version_2_0/malva_test): Workflow for testing MALVA Output.
 
 ### Note
 - The tool has been tested only on 64bit Linux system.

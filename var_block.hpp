@@ -123,7 +123,7 @@ public:
         vector<string> ref_subs = get_ref_subs(comb, reference);
         unordered_set<vector<string_view>, VectorHash> alt_allele_combs = build_alleles_combs(comb, v_index, haploid);
 
-        for (const vector<string_view> aac : alt_allele_combs)
+        for (const vector<string_view> &aac : alt_allele_combs)
         {
           vector<string> ksss; // kmers sequences
           string_view mid_allele;
@@ -132,12 +132,11 @@ public:
             mid_allele = aac[0];
 
             string kmer(mid_allele, 0, k);
-            transform(kmer.begin(), kmer.end(), kmer.begin(), ::toupper);
             ksss.emplace_back(kmer);
 
             for (uint p = k; p < mid_allele.size(); ++p)
             {
-              char c = toupper(mid_allele[p]);
+              char c = mid_allele[p];
               kmer.erase(0, 1);
               kmer += c;
               ksss.emplace_back(kmer);
@@ -196,7 +195,6 @@ public:
             else
               kmer.erase(kmer.size() - abs(missing_suffix),
                          abs(missing_suffix));
-            transform(kmer.begin(), kmer.end(), kmer.begin(), ::toupper);
 
             ksss.emplace_back(kmer);
           }
@@ -708,8 +706,8 @@ private: // methods
    * (used when gt information is unphased). Example: given 0/1, 1/3,
    * 1/1, I want: 0,1,1; 0,3,1; 1,1,1; 1,3,1 (with repetitions).
    **/
-  vector<vector<string_view>> combine_haplotypes(vector<string_view> hap1,
-                                                 vector<string_view> hap2)
+  vector<vector<string_view>> combine_haplotypes(const vector<string_view> &hap1,
+                                                 const vector<string_view> &hap2)
   {
     int n = hap1.size();   // number of alleles in each haplotype
     int N = pow(2, n - 1); // number of possible haplotypes
@@ -735,7 +733,7 @@ private: // methods
    **/
   unordered_set<vector<string_view>, VectorHash>
   build_alleles_combs(const vector<int> &comb,
-                      const int &central_index,
+                      const int central_index,
                       const bool haploid)
   {
     // A set to avoid duplicate elements
@@ -744,25 +742,31 @@ private: // methods
     // For each individual having this variant
     for (int gt_i = 0; gt_i < (int)central_v->genotypes.size(); ++gt_i)
     {
-      bool phased_combination = true;
-      vector<string_view> hap1;
-      vector<string_view> hap2;
-      for (const int &j : comb)
-      {
-        phased_combination &= variants[j].phasing[gt_i];
-        hap1.emplace_back(variants[j].get_allele(variants[j].genotypes[gt_i].first));
-        if (!haploid)
-        {
-          hap2.emplace_back(variants[j].get_allele(variants[j].genotypes[gt_i].second));
-        }
-      }
-
       if (haploid)
       {
+        vector<string_view> hap1;
+        hap1.reserve(comb.size());
+        for (const int j : comb)
+        {
+          hap1.emplace_back(variants[j].get_allele(variants[j].genotypes[gt_i].first));
+        }
+
         aacs.insert(hap1);
       }
       else
       {
+        bool phased_combination = true;
+        vector<string_view> hap1;
+        hap1.reserve(comb.size());
+        vector<string_view> hap2;
+        hap2.reserve(comb.size());
+        for (const int j : comb)
+        {
+          phased_combination &= variants[j].phasing[gt_i];
+          hap1.emplace_back(variants[j].get_allele(variants[j].genotypes[gt_i].first));
+          hap2.emplace_back(variants[j].get_allele(variants[j].genotypes[gt_i].second));
+        }
+
         if (phased_combination)
         {
           aacs.insert(hap1);
@@ -771,7 +775,7 @@ private: // methods
         else
         {
           vector<vector<string_view>> all_haplotypes = combine_haplotypes(hap1, hap2);
-          for (vector<string_view> hap : all_haplotypes)
+          for (const vector<string_view> &hap : all_haplotypes)
           {
             aacs.insert(hap);
           }

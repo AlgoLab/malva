@@ -69,6 +69,7 @@ struct Variant
     ref_pos = vcf_record->pos;
     idx = vcf_record->d.id;
     ref_sub = vcf_record->d.allele[0];
+    transform(ref_sub.begin(), ref_sub.end(), ref_sub.begin(), ::toupper);
     /**
      * There is vcf_record->rlen for the ref_size but sometimes it
      * returns a wrong value. The only example I found is when all
@@ -79,7 +80,11 @@ struct Variant
     {
       char *curr_alt = vcf_record->d.allele[i];
       if (curr_alt[0] != '<')
-        alts.emplace_back(string(curr_alt));
+      {
+        string alt_tmp(curr_alt);
+        transform(alt_tmp.begin(), alt_tmp.end(), alt_tmp.begin(), ::toupper);
+        alts.emplace_back(alt_tmp);
+      }
     }
     coverages.resize(alts.size() + 1, 0); // +1 for the reference allele
     quality = vcf_record->qual;
@@ -208,12 +213,12 @@ struct Variant
   /**
    * Return the i-th allele, 0 is the reference
    **/
-  string_view get_allele(const int &i) const
+  string_view get_allele(const int i) const
   {
     if (i == 0)
-      return string_view(ref_sub);
+      return ref_sub;
     else
-      return string_view(alts[i - 1]);
+      return alts[i - 1];
   }
 
   /**
@@ -222,12 +227,12 @@ struct Variant
    **/
   int get_allele_index(const string_view &a) const
   {
-    if (ref_sub.compare(a) == 0)
+    if (ref_sub == a)
       return 0;
     int i = 1;
     for (const string &all : alts)
     {
-      if (all.compare(a) == 0)
+      if (all == a)
         return i;
       ++i;
     }

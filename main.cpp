@@ -130,7 +130,7 @@ void add_kmers_to_bf(BF &bf, KMAP &ref_bf, const VK_GROUP &kmers)
       for (const auto &Ks : p.second)
       {
         // For each list of kmers of the allele
-        for (const auto &kmer : Ks)
+        for (const string &kmer : Ks)
         {
           // For each kmer in the kmer list
           if (p.first == 0)
@@ -161,7 +161,7 @@ void set_coverages(BF &bf, KMAP &ref_bf, VB &vb, const VK_GROUP &kmers /*, const
       {
         uint curr_cov = 0;
         int n = 0; // Number of kmers in the signature
-        for (const auto &kmer : Ks)
+        for (const string &kmer : Ks)
         {
           int w = 0;
           if (p.first == 0)
@@ -290,6 +290,7 @@ int index_main(int argc, char *argv[])
       id = id.substr(3);
     }
     string seq(reference->seq.s);
+    transform(seq.begin(), seq.end(), seq.begin(), ::toupper);
     refs[id] = seq;
   }
   pelapsed("Reference processed");
@@ -379,21 +380,19 @@ int index_main(int argc, char *argv[])
   pelapsed("BF creation complete");
 
   pelapsed("Reference BF construction");
-  for (const auto &seq_name : used_seq_names)
+  for (const string &seq_name : used_seq_names)
   {
     string reference = refs[seq_name];
     string ref_ksub(reference, (opt::ref_k - opt::k) / 2, opt::k);
     string context(reference, 0, opt::ref_k);
-    transform(ref_ksub.begin(), ref_ksub.end(), ref_ksub.begin(), ::toupper);
-    transform(context.begin(), context.end(), context.begin(), ::toupper);
     if (bf.test_key(ref_ksub.c_str()))
       context_bf.add_key(context.c_str());
     for (uint p = opt::ref_k; p < reference.size(); ++p)
     {
-      char c1 = toupper(reference[p]);
+      char c1 = reference[p];
       context.erase(0, 1);
       context += c1;
-      char c2 = toupper(reference[p - (opt::ref_k - opt::k) / 2]);
+      char c2 = reference[p - (opt::ref_k - opt::k) / 2];
       ref_ksub.erase(0, 1);
       ref_ksub += c2;
       if (bf.test_key(ref_ksub.c_str()))
@@ -473,6 +472,7 @@ int call_main(int argc, char *argv[])
       id = id.substr(3);
     }
     string seq(reference->seq.s);
+    transform(seq.begin(), seq.end(), seq.begin(), ::toupper);
     refs[id] = seq;
   }
   pelapsed("Reference processed");
