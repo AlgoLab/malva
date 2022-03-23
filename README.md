@@ -20,18 +20,21 @@ will create an environment named `malvatest` that includes `MALVA` and its depen
 
 To manually compile MALVA you'll need the following libraries and tools installed in your system.
 
-* [sdsl-lite v2.1.1](https://github.com/simongog/sdsl-lite/tree/v2.1.1)
-* [KMC >= v3.1.1](https://github.com/refresh-bio/KMC/tree/v3.1.1)
-* [htslib >= v1.10.2](https://github.com/samtools/htslib/tree/1.10.2)
-* OpenMP (optional)
+* [sdsl-lite v2.1.1](https://github.com/simongog/sdsl-lite/tree/v2.1.1) under License [GPLv3](https://github.com/simongog/sdsl-lite/blob/master/COPYING)
+* [KMC >= v2.3](https://github.com/refresh-bio/KMC/tree/master) under License GPLv3
+* [htslib >= v1.10.2](https://github.com/samtools/htslib/tree/1.10.2) under License [MIT/Expat](https://github.com/samtools/htslib/blob/develop/LICENSE)
+* [zstd >= 1.5.1](https://github.com/facebook/zstd) under License [BSD](https://github.com/facebook/zstd/blob/dev/LICENSE) and [GPLv2](https://github.com/facebook/zstd/blob/dev/COPYING)
+* zstdstream (already included) under [MIT](https://github.com/TorchCraft/TorchCraftAI/blob/main/LICENSE) license
+* xxHash (already included) under BSD license
 * zlib
 * cmake
+* compiler >= c++17
 
 Use your favorite system-wide package manager to install them before compiling MALVA.
 
 For example, on ubuntu
 ```shell
-$ sudo apt install -y libsdsl-dev libhts-dev libkmc-dev libomp-dev zlib1g-dev
+$ sudo apt install -y libsdsl-dev libhts-dev libkmc-dev libomp-dev zlib1g-dev libzstd-dev
 ```
 
 Alternatively, you can also use conda (and bioconda) to install dependencies:
@@ -39,7 +42,7 @@ Alternatively, you can also use conda (and bioconda) to install dependencies:
 For example (please adapt to you system setup):
 
 ``` shell
-$ conda create -n malvadeps -c bioconda -c conda-forge htslib kmc sdsl-lite cmake
+$ conda create -n malvadeps -c bioconda -c conda-forge htslib kmc sdsl-lite cmake zstd
 ```
 
 Notice that these dependencies are needed only if you want to compile MALVA from sources,
@@ -136,7 +139,8 @@ mkdir -p kmc_tmp
 
 This should take less than 1 minute to complete. You can also verify
 the correcteness of the output VCF `chr20.genotyped.vcf` by comparing
-it with [chr20.malva.vcf](https://github.com/AlgoLab/malva/blob/master/example/chr20.malva.vcf).
+it with `chr20.malva.vcf`.
+For a quick comparison look [MALVA-TEST](https://github.com/Bunco3/malva/tree/path_to_version_2_0/malva_test): Workflow for testing MALVA Output.
 
 ## Haploid mode - Example
 To run MALVA in haploid mode just use the `-1` argument.
@@ -145,6 +149,10 @@ cd example
 tar xvfz haploid.tar.gz
 ../MALVA -1 -k 35 -r 43 -b 1 -f AF haploid.fa haploid.vcf haploid.fq > haploid.genotyped.vcf
 ```
+This should take less than 1 minute to complete. You can also verify
+the correcteness of the output VCF `haploid.genotyped.vcf` by comparing
+it with `haploid.malva.vcf`.
+For a quick comparison look [MALVA-TEST](https://github.com/Bunco3/malva/tree/path_to_version_2_0/malva_test): Workflow for testing MALVA Output.
 
 ### Note
 - The tool has been tested only on 64bit Linux system.
@@ -158,6 +166,9 @@ tar xvfz haploid.tar.gz
 * [Alexander Schönhuth](https://homepages.cwi.nl/~as/)
 
 For inquiries on this software please contact either MP or LD.
+
+### Code review and Autor of [malva-test](https://github.com/Bunco3/malva/tree/path_to_version_2_0/malva_test)
+* Marco Burgio
 
 ## License
 MALVA is distributed under the GPL-3.0-or-later license.
