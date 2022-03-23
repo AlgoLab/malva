@@ -9,10 +9,7 @@ set_target_properties(malva-geno
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
 )
 
-#add c++ 17
 set_property(TARGET malva-geno PROPERTY CXX_STANDARD 17)
-
-find_package(ZLIB)
 
 find_library(SDSL libsdsl.a REQUIRED)
 if (NOT SDSL)
@@ -21,24 +18,11 @@ else ()
     message(STATUS "SDSL found ${SDSL}")
 endif ()
 
-find_library(KMC kmc REQUIRED)
-if (NOT KMC)
-    message(FATAL_ERROR "kmc (libkmc-dev) required")
-else ()
-    message(STATUS "KMC found ${KMC}")
-endif ()
 find_path(KMC_INCLUDE_DIR NAMES kmc_file.h PATHS ${CMAKE_SYSTEM_PREFIX_PATH} PATH_SUFFIXES "kmc")
 if (NOT KMC_INCLUDE_DIR)
     message(FATAL_ERROR "kmc_file.h (part of libkmc-dev) required")
 else ()
     message(STATUS "KMC includes found ${KMC_INCLUDE_DIR}")
-endif ()
-
-find_library(HTSLIB hts REQUIRED)
-if (NOT HTSLIB)
-    message(FATAL_ERROR "libhts (libhts-dev) required")
-else ()
-    message(STATUS "HTSLIB found ${HTSLIB}")
 endif ()
 
 find_library(ZSTD libzstd.a REQUIRED)
