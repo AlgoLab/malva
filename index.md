@@ -1,3 +1,7 @@
+---
+title: MALVA: genotyping by Mapping-free ALternate-allele detection of known VAriants
+---
+
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/malva/badges/installer/conda.svg)](https://conda.anaconda.org/bioconda)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/malva/badges/platforms.svg)](https://anaconda.org/bioconda/malva)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/malva/badges/license.svg)](https://anaconda.org/bioconda/malva)
@@ -9,8 +13,8 @@ Alignment-free genotyping of a set of known variants (in VCF format) directly fr
 ## Install
 
 `MALVA` is available on bioconda.
-```bash
-conda create -n malvatest malva
+```shell
+$ conda create -n malvatest -c bioconda malva
 ```
 will create an environment named `malvatest` that includes `MALVA` and its dependencies.
 
@@ -18,49 +22,49 @@ will create an environment named `malvatest` that includes `MALVA` and its depen
 
 ### Dependencies
 
-MALVA requires the following libraries and tools:
+To manually compile MALVA you'll need a C++17-compliant compiler, [CMake](https://cmake.org), and the following libraries installed in your system:
+* [sdsl-lite v2.1.1](https://github.com/simongog/sdsl-lite) under [GPLv3 License](https://github.com/simongog/sdsl-lite/blob/master/COPYING)
+* [KMC >= v2.3](https://github.com/refresh-bio/KMC) under GPLv3 License
+* [htslib >= v1.10.2](https://github.com/samtools/htslib) under [MIT/Expat License](https://github.com/samtools/htslib/blob/develop/LICENSE)
+* [zstd >= 1.5.1](https://github.com/facebook/zstd) under [BSD License](https://github.com/facebook/zstd/blob/dev/LICENSE) and [GPLv2](https://github.com/facebook/zstd/blob/dev/COPYING)
+* [zstdstream](https://github.com/TorchCraft/TorchCraftAI/blob/main/common/zstdstream.cpp) (included in this repository) under [MIT License](https://github.com/TorchCraft/TorchCraftAI/blob/main/LICENSE)
+* [xxHash](https://github.com/Cyan4973/xxHash) (included in this repository) under BSD 2-Clause License
+* [zlib](https://www.zlib.net) under [zlib license](https://www.zlib.net/zlib_license.html)
 
-* [sdsl-lite v2.1.1](https://github.com/simongog/sdsl-lite/tree/v2.1.1)
-* [KMC v3.1.0](https://github.com/refresh-bio/KMC/tree/v3.1.0)
-* [htslib v1.9](https://github.com/samtools/htslib/tree/1.9)
+Use your favorite system-wide package manager to install them before compiling MALVA.
 
-This repository comes with them as submodules so you don't need to clone them separately.
+Alternatively, you can also use conda (and bioconda) to install dependencies. For example (please adapt to you system setup):
+
+``` shell
+conda create -n malvadeps -c conda-forge -c bioconda htslib kmc sdsl-lite cmake zstd-static cxx-compiler
+```
+
+Notice that these dependencies are needed only if you want to compile MALVA from sources,
+since otherwise it is already available on Bioconda in binary form (see [above](#install)).
+
 
 ### Download and installation
 
 To download and compile the code run the following commands.
 
-First clone the repository and cd into it.
-
-```bash
-git clone --recursive https://github.com/AlgoLab/malva.git
+```shell
+git clone https://github.com/AlgoLab/malva.git
 cd malva
-```
-
-If you have KMC3, sdsl-lite, and htslib already installed you can skip the following commands.
-
-```bash
-cd sdsl-lite/build
-./build.sh
-cd ../../KMC
-make
-cd ../htslib
-make
-cd ..
-```
-
-You can now compile MALVA from the root of you local copy of the repository simply by running make.
-
-```bash
-cd <path-to-malva-local-repo>
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
+
+If the compilation is successful, the `malva-geno` binary will be copied to the `${PROJECT_ROOT}/bin` directory.
 
 ## Usage
 ```
-Usage: malva-geno [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] <reference> <variants> <kmc_output_prefix>
+Usage: malva-geno <subcommand> [-k KMER-SIZE] [-r REF-KMER-SIZE] [-c MAX-COV] <reference> <variants> <kmc_output_prefix>
 
 Arguments:
+	<subcommand>                      either index to create the reference index or call to call call the genotypes.
+
     -h, --help                        display this help and exit
     -k, --kmer-size                   size of the kmers to index (default:35)
     -r, --ref-kmer-size               size of the reference kmers to index (default:43)
@@ -71,6 +75,8 @@ Arguments:
     -b, --bf-size                     bloom filter size in GB (default:4)
     -p, --strip-chr                   strip "chr" from sequence names (default:false)
     -u, --uniform                     use uniform a priori probabilities (default:false)
+    -v, --verbose                     output COVS and GTS in INFO column (default: false)
+    -1, --haploid                     run MALVA in haploid mode (default: false)
 
 Positional arguments:
     <reference>                       reference file in FASTA format (may be gzipped)
@@ -80,8 +86,7 @@ Positional arguments:
 
 The file needed by malva whose prefix is `<kmc_output_prefix>` can be computed with KMC as follows:
 ```
-cd <path-to-malva-local-repo>
-./KMC/bin/KMC -k<REF-KMER-SIZE> <sample> <kmc_output_prefix> <kmc_tmp_dir>
+kmc -k<REF-KMER-SIZE> <sample> <kmc_output_prefix> <kmc_tmp_dir>
 ```
 
 Anyway, we provide a bash script that you can use to run the full pipeline `KMC+malva-geno`:
@@ -100,6 +105,8 @@ Arguments:
      -m              max amount of RAM in GB - KMC parameter (default:4)
      -p              strip "chr" from sequence names (dafault:false)
      -u              use uniform a priori probabilities (default:false)
+     -v              output COVS and GTS in INFO column (default: false)
+     -1              run MALVA in haploid mode (default: false)
 
 Positional arguments:
     <reference>     reference file in FASTA format (can be gzipped)
@@ -109,22 +116,32 @@ Positional arguments:
 
 ## Example
 After you compiled `malva`, you can test it on the example data provided:
-```
+```shell
 cd example
 tar xvfz data.tar.gz
 ../MALVA -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf chr20.sample.fa > chr20.genotyped.vcf
 ```
 
 The last command is equivalent to run:
-```
+```shell
 mkdir -p kmc_tmp
-../KMC/bin/kmc -m4 -k43 -fm chr20.sample.fa kmc.out kmc_tmp
-../malva-geno -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf kmc.out > chr20.genotyped.vcf
+kmc -m4 -k43 -fm chr20.sample.fa kmc.out kmc_tmp
+../bin/malva-geno index -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf kmc.out
+../bin/malva-geno call -k 35 -r 43 -b 1 -f EUR_AF chr20.fa chr20.vcf kmc.out > chr20.genotyped.vcf
 ```
 
-This should take less than 1 minute to complete. You can also verify
-the correcteness of the output VCF `chr20.genotyped.vcf` by comparing
-it with [chr20.malva.vcf](https://github.com/AlgoLab/malva/blob/master/example/chr20.malva.vcf).
+This should take less than 1 minute to complete. You can also verify the correcteness of the output VCF `chr20.genotyped.vcf` by comparing it with `chr20.malva.vcf`.
+For a quick comparison look [MALVA-TEST](https://github.com/Bunco3/malva/tree/path_to_version_2_0/malva_test): Workflow for testing MALVA Output.
+
+## Haploid mode - Example
+To run MALVA in haploid mode just use the `-1` argument.
+```
+cd example
+tar xvfz haploid.tar.gz
+../MALVA -1 -k 35 -r 43 -b 1 -f AF haploid.fa haploid.vcf haploid.fq > haploid.genotyped.vcf
+```
+This should take less than 1 minute to complete. You can also verify the correcteness of the output VCF `haploid.genotyped.vcf` by comparing it with `haploid.malva.vcf`.
+For a quick comparison look [MALVA-TEST](https://github.com/Bunco3/malva/tree/path_to_version_2_0/malva_test): Workflow for testing MALVA Output.
 
 ### Note
 - The tool has been tested only on 64bit Linux system.
@@ -136,6 +153,7 @@ it with [chr20.malva.vcf](https://github.com/AlgoLab/malva/blob/master/example/c
 * [Giulia Bernardini](https://algolab.eu/people/giulia-bernardini)
 * [Paola Bonizzoni](https://algolab.eu/people/bonizzoni/)
 * [Alexander Schönhuth](https://homepages.cwi.nl/~as/)
+* Marco Burgio (code refactoring and `malva-test` utility)
 
 For inquiries on this software please contact either MP or LD.
 
