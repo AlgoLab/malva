@@ -220,45 +220,19 @@ void print_cleaned_header(bcf_hdr_t *vcf_header, const bool verbose)
 
 // ---------------------------------------------------------------------------
 
-int index_main(int argc, char *argv[]);
-int call_main(int argc, char *argv[]);
-
 int main(int argc, char *argv[])
-{
-  if (argc < 2)
-  {
-    cerr << "malva missing arguments" << endl;
-    cerr << USAGE_MESSAGE << endl;
-    return 1;
-  }
-
-  if (strncmp(argv[1], "index", 5) == 0)
-  {
-    return index_main(argc - 1, argv + 1);
-  }
-  else if (strncmp(argv[1], "call", 4) == 0)
-  {
-    return call_main(argc - 1, argv + 1);
-  }
-  else
-  {
-    cerr << "Could not interpret command " << argv[1] << "." << endl;
-    cerr << "Accepted commands are index and call." << endl;
-    return 1;
-  }
-}
-
-int index_main(int argc, char *argv[])
 {
   hts_set_log_level(HTS_LOG_OFF);
 
-  parse_arguments(argc, argv);
+  char *fasta_path = argv[1];
+  char *vcf_path = argv[2];
+  char *kmc_path = argv[3];
 
   // STEP 0: open and check input files
-  gzFile fasta_in = gzopen(opt::fasta_path.c_str(), "r");
+  gzFile fasta_in = gzopen(fasta_path, "r");
   kseq_t *reference = kseq_init(fasta_in);
 
-  htsFile *vcf = bcf_open(opt::vcf_path.c_str(), "r");
+  htsFile *vcf = bcf_open(vcf_path, "r");
   bcf_hdr_t *vcf_header = bcf_hdr_read(vcf);
   int is_file_flag = 0;
   if (opt::samples != "-")
@@ -272,9 +246,9 @@ int index_main(int argc, char *argv[])
   bcf1_t *vcf_record = bcf_init();
 
   CKMCFile kmer_db;
-  if (!kmer_db.OpenForListing(opt::kmc_sample_path))
+  if (!kmer_db.OpenForListing(kmc_path))
   {
-    cerr << "ERROR: cannot open " << opt::kmc_sample_path << endl;
+    cerr << "ERROR: cannot open " << kmc_path << endl;
     return 1;
   }
 
@@ -379,216 +353,70 @@ int index_main(int argc, char *argv[])
 
   pelapsed("BF creation complete");
 
-  pelapsed("Reference BF construction");
-  for (const string &seq_name : used_seq_names)
-  {
-    string reference = refs[seq_name];
-    string ref_ksub(reference, (opt::ref_k - opt::k) / 2, opt::k);
-    string context(reference, 0, opt::ref_k);
-    if (bf.test_key(ref_ksub.c_str()))
-      context_bf.add_key(context.c_str());
-    for (uint p = opt::ref_k; p < reference.size(); ++p)
-    {
-      char c1 = reference[p];
-      context.erase(0, 1);
-      context += c1;
-      char c2 = reference[p - (opt::ref_k - opt::k) / 2];
-      ref_ksub.erase(0, 1);
-      ref_ksub += c2;
-      if (bf.test_key(ref_ksub.c_str()))
-        context_bf.add_key(context.c_str());
-    }
-  }
-  pelapsed("Reference BF creation complete");
+  // pelapsed("Reference BF construction");
+  // for (const string &seq_name : used_seq_names)
+  // {
+  //   string reference = refs[seq_name];
+  //   string ref_ksub(reference, (opt::ref_k - opt::k) / 2, opt::k);
+  //   string context(reference, 0, opt::ref_k);
+  //   if (bf.test_key(ref_ksub.c_str()))
+  //     context_bf.add_key(context.c_str());
+  //   for (uint p = opt::ref_k; p < reference.size(); ++p)
+  //   {
+  //     char c1 = reference[p];
+  //     context.erase(0, 1);
+  //     context += c1;
+  //     char c2 = reference[p - (opt::ref_k - opt::k) / 2];
+  //     ref_ksub.erase(0, 1);
+  //     ref_ksub += c2;
+  //     if (bf.test_key(ref_ksub.c_str()))
+  //       context_bf.add_key(context.c_str());
+  //   }
+  // }
+  // pelapsed("Reference BF creation complete");
+  // context_bf.switch_mode();
 
-  context_bf.switch_mode();
-
-  { // BF save into compressed file
-    zstd::ofstream index_stream(opt::vcf_path + ".c" + to_string(opt::ref_k) + ".k" + to_string(opt::k) + MALVA_IDX_SUFFIX + ".zst");
-
-    context_bf >> index_stream;
-    bf >> index_stream;
-    ref_bf >> index_stream;
-  }
-
-  kseq_destroy(reference);
-  gzclose(fasta_in);
-  cout.flush();
-
-  return 0;
-}
-
-int call_main(int argc, char *argv[])
-{
-  hts_set_log_level(HTS_LOG_OFF);
-
-  parse_arguments(argc, argv);
-
-  // STEP 0: open and check input files
-  gzFile fasta_in = gzopen(opt::fasta_path.c_str(), "r");
-  kseq_t *reference = kseq_init(fasta_in);
-
-  htsFile *vcf = bcf_open(opt::vcf_path.c_str(), "r");
-  bcf_hdr_t *vcf_header = bcf_hdr_read(vcf);
-  int is_file_flag = 0;
-  if (opt::samples != "-")
-    is_file_flag = 1;
-  int set_samples_code = bcf_hdr_set_samples(vcf_header, opt::samples.c_str(), is_file_flag);
-  if (set_samples_code != 0)
-  {
-    cerr << "ERROR: VCF samples subset (code: " << set_samples_code << ")" << endl;
-    return 1;
-  }
-  bcf1_t *vcf_record = bcf_init();
-
-  CKMCFile kmer_db;
-  if (!kmer_db.OpenForListing(opt::kmc_sample_path))
-  {
-    cerr << "ERROR: cannot open " << opt::kmc_sample_path << endl;
-    return 1;
-  }
-
-  BF bf;
-  KMAP ref_bf;
-  BF context_bf;
-
-  { // decompress file and load BF
-    zstd::ifstream index_stream(opt::vcf_path + ".c" + to_string(opt::ref_k) + ".k" + to_string(opt::k) + MALVA_IDX_SUFFIX + ".zst");
-
-    context_bf << index_stream;
-    bf << index_stream;
-    ref_bf << index_stream;
-  }
-
-  // References are stored in a map
-  pelapsed("Reference parsing");
-  map<string, string> refs;
-  int l;
-  while ((l = kseq_read(reference)) >= 0)
-  {
-    string id = reference->name.s;
-    if (id.compare(0, 3, "chr") == 0 && opt::strip_chr)
-    {
-      id = id.substr(3);
-    }
-    string seq(reference->seq.s);
-    transform(seq.begin(), seq.end(), seq.begin(), ::toupper);
-    refs[id] = seq;
-  }
-  pelapsed("Reference processed");
-
-  // STEP 2: test variants present in read sample
   pelapsed("KMC output processing");
-  uint32 klen, mode, min_counter, pref_len, sign_len, min_c, counter;
+  uint32 k, mode, min_counter, pref_len, sign_len, min_c, counter;
   uint64 tot_kmers, max_c;
-  kmer_db.Info(klen, mode, min_counter, pref_len, sign_len, min_c, max_c, tot_kmers);
-  CKmerAPI kmer_obj(klen);
-
-  char context[opt::ref_k + 1];
+  kmer_db.Info(k, mode, min_counter, pref_len, sign_len, min_c, max_c, tot_kmers);
+  CKmerAPI kmer_obj(k);
+  char kmer[k + 1];
   while (kmer_db.ReadNextKmer(kmer_obj, counter))
   {
-    kmer_obj.to_string(context);
-    transform(context, context + opt::ref_k, context, ::toupper);
-    char kmer[opt::k + 1];
-    strncpy(kmer, context + ((opt::ref_k - opt::k) / 2), opt::k);
-    kmer[opt::k] = '\0';
-    ref_bf.increment(kmer, counter);
-    if (!context_bf.test_key(context))
-    {
-      bf.increment(kmer, counter);
-    }
+    kmer_obj.to_string(kmer);
+    transform(kmer, kmer + k, kmer, ::toupper);
+
+    if (!bf.test_key(kmer))
+      cout << kmer << "\t" << counter << endl;
   }
+  /** WITH CONTEXT
+    // pelapsed("KMC output processing");
+    // uint32 klen, mode, min_counter, pref_len, sign_len, min_c, counter;
+    // uint64 tot_kmers, max_c;
+    // kmer_db.Info(klen, mode, min_counter, pref_len, sign_len, min_c, max_c, tot_kmers);
+    // CKmerAPI kmer_obj(klen);
 
-  pelapsed("BF weights created");
-
-  // STEP 3: check if variants in vcf are covered enough
-  vcf = bcf_open(opt::vcf_path.c_str(), "r");
-  vcf_header = bcf_hdr_read(vcf);
-  set_samples_code = bcf_hdr_set_samples(vcf_header, NULL, 0);
-  print_cleaned_header(vcf_header, opt::verbose);
-  bcf_hdr_destroy(vcf_header);
-  bcf_close(vcf);
-
-  vcf = bcf_open(opt::vcf_path.c_str(), "r");
-  vcf_header = bcf_hdr_read(vcf);
-  set_samples_code = bcf_hdr_set_samples(vcf_header, opt::samples.c_str(), is_file_flag);
-  vcf_record = bcf_init();
-
-  pelapsed("VCF parsing and genotyping");
-  int i = 0;
-  string last_seq_name = "";
-  VB vb(opt::k, opt::error_rate);
-
-  while (bcf_read(vcf, vcf_header, vcf_record) == 0)
-  {
-    bcf_unpack(vcf_record, BCF_UN_STR);
-    Variant v(vcf_header, vcf_record, opt::freq_key, opt::uniform);
-    ++i;
-    if (i % 5000 == 0)
-    {
-      string log_line = "Processed " + to_string(i) + " variants";
-      pelapsed(log_line, true);
-    }
-    // In the first iteration, we set last_seq_name
-    if (last_seq_name.size() == 0)
-      last_seq_name = v.seq_name;
-
-    // In this step, we must consider the variants not present in the
-    // samples: their genotype is 0/0
-    if (!v.has_alts)
-      continue;
-
-    if (vb.empty())
-    {
-      vb.add_variant(v);
-      continue;
-    }
-
-    if (!vb.is_near_to_last(v) || last_seq_name != v.seq_name)
-    {
-      /***
-       * 1. extract k-mers
-       * 2. check if variants are covered
-       * 3. output covered variants
-       * 4. clear block
-       * 5. set new reference
-       ***/
-      VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name], opt::haploid);
-      set_coverages(bf, ref_bf, vb, kmers);
-      vb.genotype(opt::max_coverage, opt::haploid);
-      vb.output_variants(opt::haploid, opt::verbose);
-      vb.clear();
-      if (last_seq_name != v.seq_name)
-        last_seq_name = v.seq_name;
-    }
-    vb.add_variant(v);
-  }
-  if (!vb.empty())
-  {
-    /***
-     * 1. extract k-mers
-     * 2. check if variants are covered
-     * 3. output covered variants
-     * 4. clear block
-     ***/
-    VK_GROUP kmers = vb.extract_kmers(refs[last_seq_name], opt::haploid);
-    set_coverages(bf, ref_bf, vb, kmers);
-    vb.genotype(opt::max_coverage, opt::haploid);
-    vb.output_variants(opt::haploid, opt::verbose);
-    vb.clear();
-  }
-  string log_line = "Processed " + to_string(i) + " variants";
-  pelapsed(log_line);
-
-  bcf_hdr_destroy(vcf_header);
-  bcf_destroy(vcf_record);
-  bcf_close(vcf);
+    // char context[opt::ref_k + 1];
+    // while (kmer_db.ReadNextKmer(kmer_obj, counter))
+    // {
+    //   kmer_obj.to_string(context);
+    //   transform(context, context + opt::ref_k, context, ::toupper);
+    //   char kmer[opt::k + 1];
+    //   strncpy(kmer, context + ((opt::ref_k - opt::k) / 2), opt::k);
+    //   kmer[opt::k] = '\0';
+    //   ref_bf.increment(kmer, counter);
+    //   if (!context_bf.test_key(context))
+    //   {
+    //     bf.increment(kmer, counter);
+    //   }
+    // }
+    **/
+  pelapsed("Done.");
 
   kseq_destroy(reference);
   gzclose(fasta_in);
   cout.flush();
-
-  pelapsed("Execution completed");
 
   return 0;
 }
